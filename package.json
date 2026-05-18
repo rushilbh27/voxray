@@ -9,9 +9,11 @@
     "lint": "eslint",
     "sync": "tsx scripts/sync-calls.ts",
     "sync:full": "tsx scripts/sync-calls.ts --full",
-    "process": "tsx scripts/process-transcripts.ts"
+    "process": "tsx scripts/process-transcripts.ts",
+    "analyze": "tsx scripts/analyze-calls.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.96.0",
     "@supabase/supabase-js": "^2.105.4",
     "@types/ws": "^8.18.1",
     "date-fns": "^4.2.0",

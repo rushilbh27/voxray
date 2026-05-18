@@ -1,0 +1,63 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase';
+import { analyzeCallErrors, detectAgentType } from '@/lib/error-analyzer';
+
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
+
+export async function POST(req: NextRequest, ctx: RouteContext) {
+  const { id: callId } = await ctx.params;
+
+  const { data: call } = await supabaseAdmin
+    .from('ultravox_calls')
+    .select('call_id, client_name, analysis_status')
+    .eq('call_id', callId)
+    .single();
+
+  if (!call) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  const force = (await req.json().catch(() => ({}))).force === true;
+
+  if (call.analysis_status === 'complete' && !force) {
+    return NextResponse.json({ status: 'already_analyzed' });
+  }
+
+  await supabaseAdmin
+    .from('ultravox_calls')
+    .update({ analysis_status: 'analyzing' })
+    .eq('call_id', callId);
+
+  try {
+    const { data: messages } = await supabaseAdmin
+      .from('ultravox_messages')
+      .select('role, text, ordinal')
+      .eq('call_id', callId)
+      .order('ordinal', { ascending: true });
+
+    const agentType = detectAgentType(call.client_name);
+    const analysis = await analyzeCallErrors(messages ?? [], agentType);
+
+    await supabaseAdmin
+      .from('ultravox_calls')
+      .update({
+        call_errors: analysis,
+        analysis_status: 'complete',
+        error_count: analysis.error_count,
+        critical_error_count: analysis.critical_error_count,
+      })
+      .eq('call_id', callId);
+
+    return NextResponse.json({ status: 'complete', analysis });
+  } catch (err) {
+    await supabaseAdmin
+      .from('ultravox_calls')
+      .update({ analysis_status: 'error' })
+      .eq('call_id', callId);
+
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Analysis failed' },
+      { status: 500 }
+    );
+  }
+}

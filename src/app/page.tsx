@@ -83,6 +83,11 @@ export default async function Dashboard({
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Voxray</h1>
           <p className="text-gray-500 mt-1">X-ray vision for your voice agents</p>
+          <div className="flex gap-4 mt-2">
+            <Link href="/errors" className="text-sm text-red-600 hover:text-red-800 font-medium">
+              Error Intelligence →
+            </Link>
+          </div>
         </div>
 
         {/* Metric cards */}

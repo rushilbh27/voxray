@@ -105,26 +105,27 @@ async function main() {
   console.log(`Webhook URL: ${webhookUrl}`);
   console.log('Finding calls needing transcript processing...\n');
 
-  // Get all ended calls with duration > 0, not unjoined, no messages, not already processed
+  // Get all ended calls with duration > 0, not unjoined, not already processed
   const { data: allCalls } = await supabase
     .from('ultravox_calls')
-    .select('call_id, client_name, duration_seconds, ended_reason, transcript_status')
+    .select('call_id, client_name, duration_seconds, ended_reason, transcript_status, raw_data')
     .eq('status', 'ended')
-    .gt('duration_seconds', 0)
+    .gt('duration_seconds', 5)
     .neq('ended_reason', 'unjoined')
     .order('created_at', { ascending: false });
 
-  // Filter: no messages AND not already processed
-  const { data: msgsData } = await supabase
-    .from('ultravox_messages')
-    .select('call_id');
-  const callsWithMsgs = new Set((msgsData || []).map((m) => m.call_id));
+  // SIP = recordings always on. WebRTC = only recent calls have recordings.
+  const sipOnly = process.argv.includes('--sip-only');
 
-  const needsProcessing = (allCalls || []).filter(
-    (c) =>
-      !callsWithMsgs.has(c.call_id) &&
-      (!c.transcript_status || c.transcript_status === 'pending')
-  );
+  const needsProcessing = (allCalls || []).filter((c) => {
+    if (c.transcript_status === 'complete' || c.transcript_status === 'processing') return false;
+    if (sipOnly) {
+      const rd = c.raw_data as Record<string, unknown>;
+      const medium = rd?.medium as Record<string, unknown> | undefined;
+      return !!medium?.sip;
+    }
+    return true;
+  });
 
   console.log(`Found ${needsProcessing.length} calls needing processing\n`);
 
