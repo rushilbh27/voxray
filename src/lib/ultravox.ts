@@ -42,6 +42,19 @@ export async function fetchCalls(limit = 100): Promise<UltravoxCall[]> {
   return data.results;
 }
 
+export async function fetchAllCalls(): Promise<UltravoxCall[]> {
+  const all: UltravoxCall[] = [];
+  let url: string | null = `${ULTRAVOX_API_URL}/calls?limit=100&ordering=-created`;
+  while (url) {
+    const res: Response = await fetch(url, { headers: headers() });
+    if (!res.ok) throw new Error(`Ultravox API error: ${res.status}`);
+    const data = await res.json();
+    all.push(...data.results);
+    url = data.next as string | null;
+  }
+  return all;
+}
+
 export async function fetchCallDetails(callId: string): Promise<UltravoxCall> {
   const res = await fetch(`${ULTRAVOX_API_URL}/calls/${callId}`, {
     headers: headers(),
@@ -51,12 +64,28 @@ export async function fetchCallDetails(callId: string): Promise<UltravoxCall> {
 }
 
 export async function fetchCallMessages(callId: string): Promise<UltravoxMessage[]> {
-  const res = await fetch(`${ULTRAVOX_API_URL}/calls/${callId}/messages`, {
+  const all: UltravoxMessage[] = [];
+  let url: string | null = `${ULTRAVOX_API_URL}/calls/${callId}/messages?limit=100`;
+  while (url) {
+    const res: Response = await fetch(url, { headers: headers() });
+    if (!res.ok) throw new Error(`Failed to fetch messages for ${callId}: ${res.status}`);
+    const data = await res.json();
+    all.push(...(data.results ?? []));
+    url = data.next as string | null;
+  }
+  return all;
+}
+
+export async function fetchCallRecordingUrl(callId: string): Promise<string | null> {
+  const res = await fetch(`${ULTRAVOX_API_URL}/calls/${callId}/recording`, {
     headers: headers(),
+    redirect: 'manual',
   });
-  if (!res.ok) throw new Error(`Failed to fetch messages for ${callId}: ${res.status}`);
-  const data = await res.json();
-  return data.results;
+  if (res.status === 302 || res.status === 301) {
+    return res.headers.get('location');
+  }
+  if (res.ok) return `${ULTRAVOX_API_URL}/calls/${callId}/recording`;
+  return null;
 }
 
 export async function fetchCallTools(callId: string): Promise<UltravoxTool[]> {
@@ -70,26 +99,31 @@ export async function fetchCallTools(callId: string): Promise<UltravoxTool[]> {
 
 export function getClientName(
   agentId: string | null | undefined,
-  agentName?: string | null
+  agentName?: string | null,
+  systemPrompt?: string | null
 ): string {
-  // Check by agentId first (exact UUID match — configure these once known)
   const knownAgents: Record<string, string> = {
-    // Add UUID → client mappings here as you identify them
-    // '65ae3d7d-5a1f-4880-89f4-1ce690efae89': 'Ramco Gas',
+    '65ae3d7d-5a1f-4880-89f4-1ce690efae89': 'Sales AI',
+    '52db715f-fc68-4265-a354-7f64a27cd3b9': 'Debt Collector',
+    '428d7591-3ba5-4b60-8aa5-a92012d12451': 'NECTOR Demo',
+    '74c435db-0382-45d4-8f84-65343c0dde5f': 'Cold Outreach',
   };
   if (agentId && knownAgents[agentId]) return knownAgents[agentId];
 
-  // Fallback: check agent name string
   const name = agentName?.toLowerCase() ?? '';
-  if (name.includes('ramco')) return 'Ramco Gas';
-  if (name.includes('edifice')) return 'Edifice Properties';
-  if (name.includes('davansh')) return 'Davansh Investment';
   if (name.includes('debt')) return 'Debt Collector';
   if (name.includes('sales')) return 'Sales AI';
   if (name.includes('cold')) return 'Cold Outreach';
+  if (name.includes('nector')) return 'NECTOR Demo';
 
-  // Use agent name as-is if available
   if (agentName) return agentName;
+
+  // No agent — extract company from systemPrompt
+  if (systemPrompt) {
+    const match = systemPrompt.match(/receptionist for ([^.]+)/i);
+    if (match) return match[1].trim();
+  }
+
   return 'Unknown';
 }
 

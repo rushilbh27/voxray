@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "sync": "tsx scripts/sync-calls.ts"
+    "sync": "tsx scripts/sync-calls.ts",
+    "sync:full": "tsx scripts/sync-calls.ts --full",
+    "process": "tsx scripts/process-transcripts.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
