@@ -1,4 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
 export const revalidate = 60;
@@ -16,6 +18,10 @@ export default async function Dashboard({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  const tokenCookie = cookies().get('voxray_access_token');
+  if (!tokenCookie) {
+    redirect('/login');
+  }
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page ?? '1', 10));
   const clientFilter = params.client ?? '';
