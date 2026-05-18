@@ -18,7 +18,7 @@ export default async function Dashboard({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const tokenCookie = cookies().get('voxray_access_token');
+  const tokenCookie = (await cookies()).get('voxray_access_token');
   if (!tokenCookie) {
     redirect('/login');
   }
