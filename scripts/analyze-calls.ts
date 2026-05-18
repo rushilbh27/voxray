@@ -5,8 +5,20 @@
  *   npm run analyze -- --force   — re-analyze all completed calls
  *   npm run analyze -- --limit 50 — cap how many to process
  */
-import { config } from 'dotenv';
-config({ path: '.env.local' });
+// Use raw dotenv to ensure ALL vars load (dotenvx only injects registered vars)
+import { readFileSync } from 'fs';
+try {
+  const env = readFileSync('.env.local', 'utf8');
+  for (const line of env.split('\n')) {
+    const eq = line.indexOf('=');
+    if (eq < 1 || line.trim().startsWith('#')) continue;
+    const key = line.substring(0, eq).trim();
+    const val = line.substring(eq + 1).trim();
+    if (!process.env[key]) process.env[key] = val;
+  }
+} catch {
+  // .env.local not found — env vars must be set externally
+}
 import { createClient } from '@supabase/supabase-js';
 import ws from 'ws';
 import { analyzeCallErrors, detectAgentType } from '../src/lib/error-analyzer';
@@ -28,13 +40,23 @@ function sleep(ms: number) {
 async function main() {
   console.log(`Mode: ${force ? 'FORCE re-analyze all' : 'new only'} | limit: ${limit}\n`);
 
-  // Get calls that have messages but no analysis (or force all)
+  // Get all call IDs that have messages
+  const { data: msgData } = await supabase
+    .from('ultravox_messages')
+    .select('call_id');
+  const callsWithMsgs = new Set((msgData ?? []).map(m => m.call_id));
+
+  if (!callsWithMsgs.size) {
+    console.log('No calls have messages. Run npm run sync first.');
+    return;
+  }
+
+  // Get calls from that set
   let query = supabase
     .from('ultravox_calls')
     .select('call_id, client_name, analysis_status')
     .eq('status', 'ended')
-    .gt('duration_seconds', 10)
-    .neq('ended_reason', 'unjoined')
+    .in('call_id', [...callsWithMsgs])
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -48,13 +70,7 @@ async function main() {
     return;
   }
 
-  // Only analyze calls that have messages
-  const { data: msgData } = await supabase
-    .from('ultravox_messages')
-    .select('call_id');
-  const callsWithMsgs = new Set((msgData ?? []).map(m => m.call_id));
-
-  const toAnalyze = calls.filter(c => callsWithMsgs.has(c.call_id));
+  const toAnalyze = calls;
   console.log(`Found ${toAnalyze.length} calls to analyze (${calls.length - toAnalyze.length} skipped — no messages)\n`);
 
   let done = 0;

@@ -1,6 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Lazy-init so the API key is read at call time, not at module load
+let _client: Anthropic | null = null;
+function getClient() {
+  if (!_client) {
+    _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+  }
+  return _client;
+}
 
 export interface CallError {
   type: string;
@@ -189,7 +196,7 @@ export async function analyzeCallErrors(
   const transcript = formatTranscript(messages);
   const prompt = buildAnalysisPrompt(agentType, transcript);
 
-  const response = await client.messages.create({
+  const response = await getClient().messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 2048,
     messages: [{ role: 'user', content: prompt }],
