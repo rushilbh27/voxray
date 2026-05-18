@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase';
+import Link from 'next/link';
 
 export const revalidate = 60;
 
@@ -65,9 +66,10 @@ export default async function Dashboard() {
                   ? 'bg-blue-100 text-blue-800'
                   : 'bg-red-100 text-red-800';
               return (
-                <div
+                <Link
                   key={call.call_id}
-                  className="px-6 py-4 hover:bg-gray-50 transition-colors"
+                  href={`/calls/${call.call_id}`}
+                  className="px-6 py-4 hover:bg-gray-50 transition-colors block"
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
@@ -96,7 +98,7 @@ export default async function Dashboard() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

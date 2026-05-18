@@ -1,5 +1,7 @@
-import 'dotenv/config';
+import { config } from 'dotenv';
+config({ path: '.env.local' });
 import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
 import {
   fetchCalls,
   fetchCallMessages,
@@ -10,8 +12,15 @@ import {
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { realtime: { transport: ws } }
 );
+
+// Parse billed duration string like "120.5s" → seconds
+function parseDurationSeconds(d: string | null | undefined): number {
+  if (!d) return 0;
+  return parseFloat(d.replace('s', '')) || 0;
+}
 
 async function syncCalls() {
   console.log('Starting Ultravox call sync...');
@@ -20,49 +29,55 @@ async function syncCalls() {
   console.log(`Found ${calls.length} calls from Ultravox`);
 
   for (const call of calls) {
+    const isEnded = !!call.ended;
+    const agentId = call.agentId ?? call.agent?.agentId ?? null;
+    const agentName = call.agent?.name ?? null;
+    const durationSeconds = parseDurationSeconds(call.billedDuration);
+    const clientName = getClientName(agentId, agentName);
+
     const { error: callError } = await supabase.from('ultravox_calls').upsert(
       {
-        call_id: call.id,
-        agent_id: call.agentId,
-        status: call.ended ? 'ended' : 'active',
-        duration_seconds: call.durationSeconds || 0,
-        cost_usd: calcCostUsd(call.durationSeconds || 0),
-        ended_reason: call.endedReason,
-        client_name: getClientName(call.agentId),
+        call_id: call.callId,
+        agent_id: agentId,
+        status: isEnded ? 'ended' : 'active',
+        duration_seconds: durationSeconds,
+        cost_usd: calcCostUsd(durationSeconds),
+        ended_reason: call.endReason,
+        client_name: clientName,
         created_at: call.created,
-        ended_at: call.ended ? new Date().toISOString() : null,
+        ended_at: call.ended ?? null,
         raw_data: call,
       },
       { onConflict: 'call_id' }
     );
 
     if (callError) {
-      console.error(`Error syncing call ${call.id}:`, callError);
+      console.error(`Error syncing call ${call.callId}:`, callError);
       continue;
     }
-    console.log(`Synced call ${call.id} (${getClientName(call.agentId)})`);
+    console.log(`Synced call ${call.callId} (${clientName})`);
 
-    if (call.ended) {
+    if (isEnded) {
       try {
-        const messages = await fetchCallMessages(call.id);
+        const messages = await fetchCallMessages(call.callId);
         for (const msg of messages) {
           await supabase.from('ultravox_messages').upsert(
             {
-              call_id: call.id,
+              call_id: call.callId,
               role: msg.role,
-              text: msg.text,
-              ordinal: msg.ordinal,
-              created_at: msg.created,
+              text: msg.text || '',
+              ordinal: msg.callStageMessageIndex ?? 0,
+              created_at: new Date().toISOString(),
             },
             { onConflict: 'call_id,ordinal' }
           );
         }
         console.log(`  Synced ${messages.length} messages`);
 
-        const tools = await fetchCallTools(call.id);
+        const tools = await fetchCallTools(call.callId);
         for (const tool of tools) {
           await supabase.from('ultravox_tools').upsert({
-            call_id: call.id,
+            call_id: call.callId,
             tool_name: tool.name,
             parameters: tool.parameters,
             result: tool.result,
@@ -73,7 +88,7 @@ async function syncCalls() {
         }
         console.log(`  Synced ${tools.length} tool calls`);
       } catch (err) {
-        console.error(`  Error fetching details for ${call.id}:`, err);
+        console.error(`  Error fetching details for ${call.callId}:`, err);
       }
     }
   }

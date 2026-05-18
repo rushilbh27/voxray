@@ -586,3 +586,6 @@ Visit: http://localhost:3000
 - Display full transcripts
 - Show tool calls
 - Add filters (client, status, date)
+
+
+Codex will review your output once you are done.

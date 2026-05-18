@@ -1,20 +1,23 @@
 const ULTRAVOX_API_URL = 'https://api.ultravox.ai/api';
 
 export interface UltravoxCall {
-  id: string;
-  agentId: string;
-  ended: boolean;
-  endedReason?: string;
-  durationSeconds?: number;
+  callId: string;          // API field name (not "id")
+  agentId: string | null;
+  ended: string | null;    // ISO datetime string when ended, null if active
+  endReason?: string | null;
+  billedDuration?: string | null; // e.g. "120.5s"
   created: string;
+  agent?: { agentId: string; name: string } | null;
+  shortSummary?: string | null;
   [key: string]: unknown;
 }
 
 export interface UltravoxMessage {
-  role: string;
+  role: string;                    // MESSAGE_ROLE_USER, MESSAGE_ROLE_AGENT, etc.
   text: string;
-  ordinal: number;
-  created: string;
+  callStageMessageIndex?: number;  // actual ordinal field from API
+  medium?: string;
+  callStageId?: string;
 }
 
 export interface UltravoxTool {
@@ -62,14 +65,31 @@ export async function fetchCallTools(callId: string): Promise<UltravoxTool[]> {
   });
   if (!res.ok) return [];
   const data = await res.json();
-  return data.results;
+  return Array.isArray(data.results) ? data.results : [];
 }
 
-export function getClientName(agentId: string): string {
-  const id = agentId.toLowerCase();
-  if (id.includes('ramco')) return 'Ramco Gas';
-  if (id.includes('edifice')) return 'Edifice Properties';
-  if (id.includes('davansh')) return 'Davansh Investment';
+export function getClientName(
+  agentId: string | null | undefined,
+  agentName?: string | null
+): string {
+  // Check by agentId first (exact UUID match — configure these once known)
+  const knownAgents: Record<string, string> = {
+    // Add UUID → client mappings here as you identify them
+    // '65ae3d7d-5a1f-4880-89f4-1ce690efae89': 'Ramco Gas',
+  };
+  if (agentId && knownAgents[agentId]) return knownAgents[agentId];
+
+  // Fallback: check agent name string
+  const name = agentName?.toLowerCase() ?? '';
+  if (name.includes('ramco')) return 'Ramco Gas';
+  if (name.includes('edifice')) return 'Edifice Properties';
+  if (name.includes('davansh')) return 'Davansh Investment';
+  if (name.includes('debt')) return 'Debt Collector';
+  if (name.includes('sales')) return 'Sales AI';
+  if (name.includes('cold')) return 'Cold Outreach';
+
+  // Use agent name as-is if available
+  if (agentName) return agentName;
   return 'Unknown';
 }
 
