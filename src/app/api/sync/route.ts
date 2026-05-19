@@ -7,6 +7,7 @@ import {
   getClientName,
   calcCostUsd,
 } from '@/lib/ultravox';
+import { analyzeCallErrors, detectAgentType } from '@/lib/error-analyzer';
 
 function parseDurationSeconds(d: string | null | undefined): number {
   if (!d) return 0;
@@ -18,6 +19,19 @@ export async function POST() {
     const calls = await fetchCalls(100);
     let synced = 0;
     let msgTotal = 0;
+    let analyzed = 0;
+
+    // Track which call_ids already have analysis so we don't re-analyze
+    const callIds = calls.map((c) => c.callId);
+    const { data: existingAnalysis } = await supabaseAdmin
+      .from('ultravox_calls')
+      .select('call_id, analysis_status')
+      .in('call_id', callIds);
+    const analyzedSet = new Set(
+      (existingAnalysis ?? [])
+        .filter((r) => r.analysis_status === 'complete')
+        .map((r) => r.call_id)
+    );
 
     for (const call of calls) {
       const isEnded = !!call.ended;
@@ -47,6 +61,7 @@ export async function POST() {
       synced++;
 
       if (isEnded) {
+        let savedMessages: Array<{ role: string; text: string; ordinal: number }> = [];
         try {
           const messages = await fetchCallMessages(call.callId);
           if (messages.length > 0) {
@@ -61,6 +76,7 @@ export async function POST() {
               .from('ultravox_messages')
               .upsert(rows, { onConflict: 'call_id,ordinal' });
             msgTotal += messages.length;
+            savedMessages = rows;
           }
 
           const tools = await fetchCallTools(call.callId);
@@ -78,10 +94,40 @@ export async function POST() {
         } catch {
           // Skip failed message/tool fetches
         }
+
+        // Auto-analyze new calls with enough messages
+        if (savedMessages.length >= 3 && !analyzedSet.has(call.callId)) {
+          try {
+            await supabaseAdmin
+              .from('ultravox_calls')
+              .update({ analysis_status: 'analyzing' })
+              .eq('call_id', call.callId);
+
+            const agentType = detectAgentType(clientName);
+            const analysis = await analyzeCallErrors(savedMessages, agentType);
+
+            await supabaseAdmin
+              .from('ultravox_calls')
+              .update({
+                call_errors: analysis,
+                analysis_status: 'complete',
+                error_count: analysis.error_count,
+                critical_error_count: analysis.critical_error_count,
+              })
+              .eq('call_id', call.callId);
+
+            analyzed++;
+          } catch {
+            await supabaseAdmin
+              .from('ultravox_calls')
+              .update({ analysis_status: 'error' })
+              .eq('call_id', call.callId);
+          }
+        }
       }
     }
 
-    return NextResponse.json({ synced, messages: msgTotal, total: calls.length });
+    return NextResponse.json({ synced, messages: msgTotal, analyzed, total: calls.length });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Sync failed' },

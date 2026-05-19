@@ -74,7 +74,7 @@ RULES THIS AGENT MUST FOLLOW:
 4. NEVER make promises it can't keep (e.g. "I'll send you floor plans", "Let me connect you now")
 5. After 3-4 answers, provide consultative value-add using context — don't just fire questions
 6. Handle objections naturally (e.g. "too expensive" → explain payment plans)
-7. Must call saveAnswers BEFORE hangUp — if transcript ends without tool call, it's a failure
+7. Must call saveAnswers BEFORE hangUp — ONLY flag no_save_answers if the transcript has 4+ agent turns AND no Tool message appears in the final 4 messages of the transcript. Short/truncated transcripts with fewer than 4 agent turns should NOT be flagged.
 8. NEVER invent property/price details not in context
 9. When customer says "sorry?" → repeat EXACT last sentence, don't advance
 10. When confused twice in a row → go back one step, re-ask the question
@@ -100,7 +100,7 @@ RULES THIS AGENT MUST FOLLOW:
 2. NEVER calculate remaining balance (only read 3 values: amount_due, total_purchase_value, paid_till_now)
 3. NEVER invent amounts — only use values from context
 4. Get an EXACT commitment date — "end of month", "soon", "later" are NOT acceptable
-5. Must call saveDebt BEFORE hangUp
+5. Must call saveDebt BEFORE hangUp — ONLY flag no_save_debt if the transcript has 4+ agent turns AND no Tool message appears in the final 4 messages. Do not flag truncated/short calls.
 6. When customer says "sorry?" → repeat EXACT last sentence
 7. NEVER switch to Luganda — if customer requests it, redirect: "Someone from our team who speaks Luganda will call you back"
 8. For "stop calling" → escalate, don't argue
@@ -130,7 +130,7 @@ RULES THIS AGENT MUST FOLLOW:
 4. Wrong number handling: "Oh I'm really sorry... anyway I'm sending you details on WhatsApp... have a wonderful day" → save → hangUp
 5. NEVER accept garbled audio as valid answer
 6. If customer not interested → don't push back, give WhatsApp redirect and close
-7. Must call saveAnswers BEFORE hangUp
+7. Must call saveAnswers BEFORE hangUp — ONLY flag no_save_answers if the transcript has 4+ agent turns AND no Tool message appears in the final 4 messages. Do not flag truncated/short calls.
 8. NEVER ask "Am I speaking to [name]?" — there is no name in cold outreach
 
 ERROR TYPES TO DETECT:
