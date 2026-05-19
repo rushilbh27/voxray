@@ -28,7 +28,7 @@ export interface ErrorAnalysis {
   critical_error_count: number;
 }
 
-type AgentType = 'sales' | 'debt' | 'cold_outreach' | 'unknown';
+export type AgentType = 'sales' | 'debt' | 'cold_outreach' | 'unknown';
 
 export function detectAgentType(clientName: string): AgentType {
   const n = clientName?.toLowerCase() ?? '';
@@ -169,14 +169,20 @@ Analyze only ACTUAL mistakes. If the agent performed well, errors array can be e
 }
 
 function formatTranscript(messages: Array<{ role: string; text: string; ordinal: number }>): string {
-  return messages
-    .sort((a, b) => a.ordinal - b.ordinal)
-    .map((m, i) => {
-      const role = m.role.includes('AGENT') || m.role === 'agent' ? 'Agent' :
-                   m.role.includes('TOOL') ? 'Tool' : 'User';
-      return `[${i}] ${role}: ${m.text}`;
-    })
-    .join('\n');
+  const sorted = messages.sort((a, b) => a.ordinal - b.ordinal);
+  const lines = sorted.map((m, i) => {
+    const role = m.role.includes('AGENT') || m.role === 'agent' ? 'Agent' :
+                 m.role.includes('TOOL') ? 'Tool' : 'User';
+    return `[${i}] ${role}: ${m.text}`;
+  });
+  // ~4 chars per token; keep well under 180k tokens of transcript budget
+  const MAX_CHARS = 600_000;
+  const full = lines.join('\n');
+  if (full.length <= MAX_CHARS) return full;
+  // Keep first 20% (opening) + last 80% (resolution/save) — errors cluster at end
+  const head = Math.floor(MAX_CHARS * 0.2);
+  const tail = MAX_CHARS - head;
+  return full.slice(0, head) + '\n[... transcript truncated ...]\n' + full.slice(-tail);
 }
 
 export async function analyzeCallErrors(

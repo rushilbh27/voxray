@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase';
-import { cookies } from 'next/headers';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import type { ErrorAnalysis } from '@/lib/error-analyzer';
@@ -115,8 +115,9 @@ export default async function Dashboard({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const tokenCookie = (await cookies()).get('voxray_access_token');
-  if (!tokenCookie) {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
     redirect('/login');
   }
   const params = await searchParams;
@@ -305,9 +306,16 @@ export default async function Dashboard({
       <div className="max-w-7xl mx-auto p-6 md:p-8">
 
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Voxray</h1>
-          <p className="text-gray-500 mt-1">X-ray vision for your voice agents</p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Voxray</h1>
+            <p className="text-gray-500 mt-1">X-ray vision for your voice agents</p>
+          </div>
+          <form action="/api/logout" method="POST">
+            <button type="submit" className="text-sm text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded border border-gray-200 hover:border-gray-400 transition-colors">
+              Sign out
+            </button>
+          </form>
         </div>
 
         {/* ── SECTION 1: METRICS ── */}

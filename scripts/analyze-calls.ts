@@ -1,11 +1,11 @@
 /**
- * Batch error analysis for existing calls.
+ * Batch call analysis. Primary: Llama audio pipeline. Fallback: Claude Haiku.
+ *
  * Usage:
- *   npm run analyze              — analyze calls missing analysis (new only)
+ *   npm run analyze              — analyze calls missing analysis
  *   npm run analyze -- --force   — re-analyze all completed calls
- *   npm run analyze -- --limit 50 — cap how many to process
+ *   npm run analyze -- --limit 50
  */
-// Use raw dotenv to ensure ALL vars load (dotenvx only injects registered vars)
 import { readFileSync } from 'fs';
 try {
   const env = readFileSync('.env.local', 'utf8');
@@ -16,12 +16,11 @@ try {
     const val = line.substring(eq + 1).trim();
     if (!process.env[key]) process.env[key] = val;
   }
-} catch {
-  // .env.local not found — env vars must be set externally
-}
+} catch { /* .env.local not found */ }
+
 import { createClient } from '@supabase/supabase-js';
 import ws from 'ws';
-import { analyzeCallErrors, detectAgentType } from '../src/lib/error-analyzer';
+import { analyzeCall } from '../src/lib/call-analyzer';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,31 +31,17 @@ const supabase = createClient(
 const force = process.argv.includes('--force');
 const limitArg = process.argv.findIndex(a => a === '--limit');
 const limit = limitArg !== -1 ? parseInt(process.argv[limitArg + 1]) : 500;
+const WEBHOOK_URL = `${process.env.VOXRAY_URL ?? 'https://voxray.vercel.app'}/api/webhook/transcript`;
 
-function sleep(ms: number) {
-  return new Promise(r => setTimeout(r, ms));
-}
+function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 async function main() {
-  console.log(`Mode: ${force ? 'FORCE re-analyze all' : 'new only'} | limit: ${limit}\n`);
+  console.log(`Mode: ${force ? 'FORCE' : 'new only'} | limit: ${limit} | webhook: ${WEBHOOK_URL}\n`);
 
-  // Get all call IDs that have messages
-  const { data: msgData } = await supabase
-    .from('ultravox_messages')
-    .select('call_id');
-  const callsWithMsgs = new Set((msgData ?? []).map(m => m.call_id));
-
-  if (!callsWithMsgs.size) {
-    console.log('No calls have messages. Run npm run sync first.');
-    return;
-  }
-
-  // Get calls from that set
   let query = supabase
     .from('ultravox_calls')
-    .select('call_id, client_name, analysis_status')
+    .select('call_id, client_name, agent_id, analysis_status')
     .eq('status', 'ended')
-    .in('call_id', [...callsWithMsgs])
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -65,46 +50,57 @@ async function main() {
   }
 
   const { data: calls } = await query;
-  if (!calls?.length) {
-    console.log('Nothing to analyze.');
-    return;
-  }
+  if (!calls?.length) { console.log('Nothing to analyze.'); return; }
 
-  const toAnalyze = calls;
-  console.log(`Found ${toAnalyze.length} calls to analyze (${calls.length - toAnalyze.length} skipped — no messages)\n`);
+  console.log(`Found ${calls.length} calls\n`);
 
-  let done = 0;
+  let audioQueued = 0;
+  let textDone = 0;
   let errors = 0;
 
-  for (const call of toAnalyze) {
+  for (const call of calls) {
     try {
+      await supabase
+        .from('ultravox_calls')
+        .update({ analysis_status: 'analyzing' })
+        .eq('call_id', call.call_id);
+
       const { data: messages } = await supabase
         .from('ultravox_messages')
         .select('role, text, ordinal')
         .eq('call_id', call.call_id)
         .order('ordinal', { ascending: true });
 
-      const agentType = detectAgentType(call.client_name);
-      const analysis = await analyzeCallErrors(messages ?? [], agentType);
+      const result = await analyzeCall({
+        callId: call.call_id,
+        agentId: call.agent_id ?? null,
+        clientName: call.client_name ?? '',
+        messages: messages ?? [],
+        webhookUrl: WEBHOOK_URL,
+      });
 
-      await supabase
-        .from('ultravox_calls')
-        .update({
-          call_errors: analysis,
-          analysis_status: 'complete',
-          error_count: analysis.error_count,
-          critical_error_count: analysis.critical_error_count,
-        })
-        .eq('call_id', call.call_id);
+      if (result.method === 'text') {
+        await supabase
+          .from('ultravox_calls')
+          .update({
+            call_errors: result.analysis,
+            analysis_status: 'complete',
+            error_count: result.analysis.error_count,
+            critical_error_count: result.analysis.critical_error_count,
+          })
+          .eq('call_id', call.call_id);
 
-      done++;
-      const errLabel = analysis.error_count > 0
-        ? ` ⚠ ${analysis.critical_error_count} critical, ${analysis.error_count} total`
-        : ' ✓ clean';
-      console.log(`[${done}/${toAnalyze.length}] ${call.call_id.substring(0, 8)} (${call.client_name})${errLabel}`);
+        textDone++;
+        const label = result.analysis.error_count > 0
+          ? ` ⚠ ${result.analysis.critical_error_count}c / ${result.analysis.error_count} errors`
+          : ' ✓ clean';
+        console.log(`[haiku] ${call.call_id.substring(0, 8)} (${call.client_name})${label}`);
+      } else {
+        audioQueued++;
+        console.log(`[llama] ${call.call_id.substring(0, 8)} (${call.client_name}) → queued`);
+      }
 
-      // Rate limit: ~3 req/s
-      await sleep(400);
+      await sleep(result.method === 'audio' ? 500 : 400);
     } catch (err) {
       errors++;
       console.error(`  ✗ ${call.call_id.substring(0, 8)}: ${(err as Error).message}`);
@@ -116,10 +112,9 @@ async function main() {
     }
   }
 
-  console.log(`\nDone: ${done} analyzed, ${errors} errors`);
+  console.log(`\n[llama] queued: ${audioQueued} — results arrive via webhook in 1-3 min each`);
+  console.log(`[haiku] done:   ${textDone}`);
+  if (errors) console.log(`errors: ${errors}`);
 }
 
-main().catch(err => {
-  console.error('Fatal:', err);
-  process.exit(1);
-});
+main().catch(err => { console.error('Fatal:', err); process.exit(1); });

@@ -107,6 +107,13 @@ export function getClientName(
     '52db715f-fc68-4265-a354-7f64a27cd3b9': 'Debt Collector',
     '428d7591-3ba5-4b60-8aa5-a92012d12451': 'NECTOR Demo',
     '74c435db-0382-45d4-8f84-65343c0dde5f': 'Cold Outreach',
+    '0a5b5ccc-4f75-456c-94c8-f9e7293f9d81': 'Davansh Investment',
+    'bfea3820-a447-4444-bd41-53ff919bbfe3': 'Edifice Properties',
+    '5da7bc3e-e653-4dd6-9402-bbe9b5b3a7b1': 'Ramco Gas',
+    'efecb97c-2937-4507-a550-8db5e8882c82': 'Real Estate AI',
+    '4be98966-7c89-4149-8f10-e2ac16291f66': 'Debt Collection 2',
+    '3983f5c0-4a95-42e3-a95a-9dbe57e11c78': 'Follow-Up Debt Bot',
+    '2dfe90c6-569f-49e0-84f4-e67d9e770255': 'Debt Welcome Bot',
   };
   if (agentId && knownAgents[agentId]) return knownAgents[agentId];
 
