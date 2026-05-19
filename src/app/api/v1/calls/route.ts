@@ -14,7 +14,10 @@ export async function GET(request: Request) {
   const agent = searchParams.get('agent') ?? '';
   const hasErrors = searchParams.get('has_errors') === 'true';
   const analysisStatus = searchParams.get('analysis_status') ?? '';
-  const offset = (page - 1) * limit;
+  // Support both ?page=N and ?offset=N (offset takes priority for cursor-style pagination)
+  const offset = searchParams.has('offset')
+    ? Math.max(0, parseInt(searchParams.get('offset')!, 10))
+    : (page - 1) * limit;
 
   let query = supabaseAdmin
     .from('ultravox_calls')
@@ -48,5 +51,7 @@ export async function GET(request: Request) {
     page,
     limit,
     pages: Math.ceil((count ?? 0) / limit),
+    has_more: offset + limit < (count ?? 0),
+    next_offset: offset + limit < (count ?? 0) ? offset + limit : undefined,
   });
 }

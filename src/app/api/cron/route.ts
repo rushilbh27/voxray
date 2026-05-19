@@ -23,18 +23,13 @@ export async function GET(request: Request) {
     }
   }
 
-  // Trigger sync (which also auto-analyzes new calls)
-  const baseUrl = process.env.VOXRAY_URL ?? 'https://voxray.vercel.app';
-  const syncRes = await fetch(`${baseUrl}/api/sync`, { method: 'POST' }).catch(() => null);
-  const syncData = syncRes ? await syncRes.json().catch(() => ({})) : {};
-
-  // Run standalone alert check (catches patterns across older calls too)
+  // Run alert check only — sync happens on demand via /api/sync
+  // (sync also runs alert check after analysis, cron is the safety net for pattern detection)
   const alerts = await runAlertCheck().catch(() => []);
 
   return NextResponse.json({
     ok: true,
     ran_at: new Date().toISOString(),
-    sync: syncData,
     alerts_fired: alerts.length,
     alerts: alerts.map((a) => ({ rule: a.rule_id, agent: a.agent, count: a.count, severity: a.severity })),
   });

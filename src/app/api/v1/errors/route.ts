@@ -127,6 +127,10 @@ export async function GET(request: Request) {
   return NextResponse.json({
     total_analyzed: totalAnalyzed ?? 0,
     calls_with_errors: errorCalls?.length ?? 0,
+    total: errors.length,
+    count: errors.length,
+    offset: 0,
+    has_more: false,
     errors,
     worst_calls: worstCalls,
   });

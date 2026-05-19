@@ -1,4 +1,5 @@
 export const HUMAN_LABELS = {
+    accepted_unknown_location: 'Agent accepted an unrecognizable area name (cannot recognize area)',
     accepted_garbled_audio: 'Accepted unclear audio as a valid answer',
     no_save_answers: 'Call ended without saving answers — data lost',
     no_consultation: 'No value-add after collecting requirements',
