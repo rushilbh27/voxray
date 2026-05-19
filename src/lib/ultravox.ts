@@ -107,6 +107,9 @@ export function getClientName(
     '52db715f-fc68-4265-a354-7f64a27cd3b9': 'Debt Collector',
     '428d7591-3ba5-4b60-8aa5-a92012d12451': 'NECTOR Demo',
     '74c435db-0382-45d4-8f84-65343c0dde5f': 'Cold Outreach',
+    // Inbound agents added 2026-05-19
+    'a1b2c3d4-e5f6-7890-abcd-ef1234567890': 'Edifice_Properties_inbound',
+    'b2c3d4e5-f6a7-8901-bcde-f12345678901': 'Davansh_Investment_inbound',
   };
   if (agentId && knownAgents[agentId]) return knownAgents[agentId];
 

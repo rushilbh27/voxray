@@ -1,0 +1,55 @@
+<evaluation>
+  <!-- Voxray MCP Server Evaluations
+       All questions are read-only and answered from current Supabase data.
+       Answers verified against live DB state as of 2026-05-19. -->
+
+  <qa_pair>
+    <question>What is the total number of Ultravox calls currently tracked in Voxray?</question>
+    <answer>1803</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Which error type has the highest number of occurrences across all analyzed calls?</question>
+    <answer>accepted_garbled_audio</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>How many calls have been analyzed by Claude Haiku in total?</question>
+    <answer>55</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>What is the current error rate across all analyzed calls (as a percentage)?</question>
+    <answer>95</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Which agent has the most calls with critical errors — Sales AI, Debt Collector, or Cold Outreach?</question>
+    <answer>Sales AI</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>How many occurrences of no_save_answers have been detected, and how many of those are critical severity?</question>
+    <answer>21 occurrences, 21 critical</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>What error type is unique to the Debt Collector agent (appears only in Debt Collector calls, not Sales AI or Cold Outreach)?</question>
+    <answer>calculated_balance</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>What is the total cost in USD for all Ultravox calls tracked in Voxray?</question>
+    <answer>44.21</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>What is the average call duration in seconds across all calls that have a duration greater than zero?</question>
+    <answer>72</answer>
+  </qa_pair>
+
+  <qa_pair>
+    <question>Using voxray_get_agent_summary, which agent has the highest error rate percentage among Sales AI, Debt Collector, and Cold Outreach?</question>
+    <answer>Sales AI</answer>
+  </qa_pair>
+</evaluation>

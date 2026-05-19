@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import type { ErrorAnalysis } from '@/lib/error-analyzer';
+import { checkApiKey } from '@/lib/api-auth';
 
 export const revalidate = 0;
 
 export async function GET(request: Request) {
+  const denied = checkApiKey(request);
+  if (denied) return denied;
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') ?? '50', 10)));

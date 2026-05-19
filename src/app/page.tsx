@@ -6,6 +6,7 @@ import type { ErrorAnalysis } from '@/lib/error-analyzer';
 import { fetchAgentPrompts } from '@/lib/ultravox';
 import { getApplicablePatches } from '@/lib/fix-specs';
 import { FixBlock } from '@/app/components/FixBlock';
+import { TrendChart } from '@/app/components/TrendChart';
 
 export const revalidate = 60;
 
@@ -217,7 +218,7 @@ export default async function Dashboard({
     .sort((a, b) => (b.critical_error_count ?? 0) - (a.critical_error_count ?? 0))
     .slice(0, 8);
 
-  // Client breakdown — all 1803 rows
+  // Client breakdown — all rows
   const { data: clientBreakdown } = await supabaseAdmin
     .from('ultravox_calls')
     .select('client_name')
@@ -227,6 +228,50 @@ export default async function Dashboard({
     clientCounts[c.client_name] = (clientCounts[c.client_name] || 0) + 1;
   }
   const clients = Object.entries(clientCounts).sort((a, b) => b[1] - a[1]);
+
+  // Trend data — weekly error rate per agent (last 12 weeks, analyzed calls only)
+  const { data: trendRaw } = await supabaseAdmin
+    .from('ultravox_calls')
+    .select('client_name, created_at, error_count, analysis_status')
+    .eq('analysis_status', 'complete')
+    .order('created_at', { ascending: true })
+    .range(0, 9999);
+
+  type WeekMap = Map<string, { analyzed: number; errors: number }>;
+  const trendByAgent: Record<string, WeekMap> = {};
+  for (const c of trendRaw ?? []) {
+    const agent = c.client_name as string;
+    const d = new Date(c.created_at as string);
+    const yr = d.getUTCFullYear();
+    const wk = Math.ceil((((d.getTime() - new Date(yr, 0, 1).getTime()) / 86400000) + new Date(yr, 0, 1).getUTCDay() + 1) / 7);
+    const key = `${yr}-W${String(wk).padStart(2, '0')}`;
+    if (!trendByAgent[agent]) trendByAgent[agent] = new Map();
+    const wm = trendByAgent[agent];
+    if (!wm.has(key)) wm.set(key, { analyzed: 0, errors: 0 });
+    const entry = wm.get(key)!;
+    entry.analyzed++;
+    if ((c.error_count as number ?? 0) > 0) entry.errors++;
+  }
+
+  // Build chart-ready array (last 12 weeks across all agents)
+  const allWeeks = [...new Set(
+    Object.values(trendByAgent).flatMap((wm) => [...wm.keys()])
+  )].sort().slice(-12);
+
+  const trendAgents = Object.keys(trendByAgent).filter((a) => a !== 'NECTOR Demo');
+  const trendData = allWeeks.map((wk) => {
+    const [yr, w] = wk.split('-W').map(Number);
+    const approxDate = new Date(yr, 0, 1 + (w - 1) * 7);
+    const label = approxDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const point = { week: wk, label } as import('@/app/components/TrendChart').TrendPoint;
+    for (const agent of trendAgents) {
+      const entry = trendByAgent[agent]?.get(wk);
+      point[agent] = entry && entry.analyzed > 0
+        ? Math.round((entry.errors / entry.analyzed) * 100)
+        : 0;
+    }
+    return point;
+  });
 
   // Paginated call list
   let query = supabaseAdmin
@@ -284,6 +329,33 @@ export default async function Dashboard({
             </div>
           ))}
         </div>
+
+        {/* ── TREND CHART ── */}
+        {trendData.length > 0 && (
+          <div className="bg-white rounded-lg shadow mb-8 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Error Rate Trend</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Weekly error rate per agent (analyzed calls)</p>
+              </div>
+              <div className="flex gap-2">
+                <a
+                  href="/api/v1/export?type=errors"
+                  className="px-3 py-1.5 text-xs rounded-md border border-gray-200 text-gray-600 hover:border-gray-400 hover:text-gray-800 transition-colors"
+                >
+                  ↓ Export errors CSV
+                </a>
+                <a
+                  href="/api/v1/export?type=worst_calls"
+                  className="px-3 py-1.5 text-xs rounded-md border border-gray-200 text-gray-600 hover:border-gray-400 hover:text-gray-800 transition-colors"
+                >
+                  ↓ Export worst calls CSV
+                </a>
+              </div>
+            </div>
+            <TrendChart data={trendData} agents={trendAgents} />
+          </div>
+        )}
 
         {/* ── SECTION 2: ERROR INTELLIGENCE ── */}
         <div className="mb-8">
@@ -521,6 +593,7 @@ export default async function Dashboard({
                 const dur = call.duration_seconds || 0;
                 const hasErrors = (call.error_count ?? 0) > 0;
                 const hasCritical = (call.critical_error_count ?? 0) > 0;
+                const noTranscript = isUnjoined || dur < 5; // unjoined or <5s = no real transcript
                 return (
                   <Link
                     key={call.call_id}
@@ -543,6 +616,11 @@ export default async function Dashboard({
                         {hasErrors && !hasCritical && (
                           <span className="px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
                             {call.error_count} errors
+                          </span>
+                        )}
+                        {noTranscript && !hasErrors && call.analysis_status === 'pending' && (
+                          <span className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-400 rounded-full">
+                            no transcript
                           </span>
                         )}
                       </div>

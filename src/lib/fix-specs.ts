@@ -176,18 +176,35 @@ If {{client_name}} is empty, null, or not provided:
   },
 
   restart_loop: {
-    patches: [{
-      label: 'Add opening interrupt handler — acknowledge mid-opening response without restarting',
-      find: `Step 2 - Introduction with Lead Source Context:`,
-      replace: `OPENING INTERRUPT RULE (read before speaking a word):
-If the customer says anything — "Hello", "Yes", "Morning", "Speaking" — while you are mid-opening:
-→ Acknowledge with "uhm..." and CONTINUE from exactly where you left off.
-→ Do NOT restart the greeting from "Hello Good morning..."
-→ Do NOT repeat the company introduction.
-→ Restarting the greeting is a CRITICAL VIOLATION that creates a VAD loop.
+    patches: [
+      {
+        label: 'Add opening interrupt handler — acknowledge mid-opening, never restart',
+        find: `Step 2 - Introduction with Lead Source Context:`,
+        replace: `OPENING INTERRUPT RULE (read before first word):
+If the customer says ANYTHING — "Hello", "Yes", "Morning", "Go on", "Speaking" —
+while you are still delivering the opening:
+→ Say "uhm..." and CONTINUE from exactly where you paused.
+→ Do NOT go back to "Hello Good morning..."
+→ Do NOT repeat your name or company name again.
+→ Restarting the greeting from the top is a CRITICAL VIOLATION — it creates a VAD loop
+  where every customer breath triggers a full restart.
 
 Step 2 - Introduction with Lead Source Context:`,
-    }],
+      },
+      {
+        label: 'Add VAD interrupt guidance to FIRST UTTERANCE RULE',
+        find: `IF call_type is empty or missing:
+Wait for the customer to speak first. Say nothing until they speak.`,
+        replace: `IF call_type is empty or missing:
+Wait for the customer to speak first. Say nothing until they speak.
+
+VAD INTERRUPT RULE (applies to ALL call types):
+If the customer makes ANY sound mid-sentence (even background noise or "Hello"):
+→ Pause, acknowledge with "uhm...", then continue the sentence you were saying.
+→ Never restart. Never repeat from the beginning.
+→ The VAD system may trigger mid-word — treat partial customer audio as an interrupt, not a full response.`,
+      },
+    ],
   },
 
   no_name_collected: {
@@ -321,16 +338,36 @@ These two flows share ZERO steps. Mixing them is a CRITICAL VIOLATION.`,
   },
 
   wrong_info: {
-    patches: [{
-      label: 'Add context-only information rule — no estimation or guessing',
-      find: `8. NEVER invent property/price details not in context`,
-      replace: `8. NEVER invent property/price details not in context
-   — Before stating any price, size, floor number, availability, or feature,
-     ask yourself: "Is this explicitly in my {{context}}?"
+    patches: [
+      {
+        label: 'Add context-only information rule — no estimating or guessing',
+        find: `8. NEVER invent property/price details not in context`,
+        replace: `8. NEVER invent property/price details not in context
+   — Before stating any price, sq footage, floor number, availability, or feature,
+     ask yourself: "Is this word-for-word in my {{context}}?"
    — If not in context → say: "That's a great question — I want to give you exact details,
      so let me have our team confirm that and follow up with you directly."
-   — Log the question in unanswered_questions. Do NOT guess or estimate.`,
-    }],
+   — Log the unanswered question in the unanswered_questions field.
+   — Do NOT estimate, approximate, or infer from context. Guessing destroys trust.`,
+      },
+      {
+        label: 'Add context verification gate before any factual claim',
+        find: `ALWAYS refer to context when:
+- You want to suggest relevant options
+- You need to provide accurate information
+- A customer asks you a question`,
+        replace: `ALWAYS refer to context when:
+- You want to suggest relevant options
+- You need to provide accurate information
+- A customer asks you a question
+
+CONTEXT VERIFICATION GATE:
+Before stating any fact (price, size, date, availability, feature):
+1. Locate the EXACT line in context where this information appears.
+2. If you cannot locate it → do NOT state it.
+3. State only what is explicitly written. Never rephrase to sound more specific.`,
+      },
+    ],
   },
 
 };

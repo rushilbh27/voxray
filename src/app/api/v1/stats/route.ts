@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { checkApiKey } from '@/lib/api-auth';
 
 export const revalidate = 60;
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = checkApiKey(request);
+  if (denied) return denied;
   const [
     { count: totalCalls },
     { count: endedCount },

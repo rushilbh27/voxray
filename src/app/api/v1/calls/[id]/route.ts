@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import type { ErrorAnalysis } from '@/lib/error-analyzer';
+import { checkApiKey } from '@/lib/api-auth';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
 export async function GET(_req: Request, ctx: RouteContext) {
+  const denied = checkApiKey(_req);
+  if (denied) return denied;
   const { id } = await ctx.params;
 
   const [{ data: call }, { data: messages }] = await Promise.all([
