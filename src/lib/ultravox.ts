@@ -127,6 +127,44 @@ export function getClientName(
   return 'Unknown';
 }
 
+export interface UltravoxAgent {
+  agentId: string;
+  name: string;
+  systemPrompt?: string | null;
+  [key: string]: unknown;
+}
+
+export async function fetchAgent(agentId: string): Promise<UltravoxAgent | null> {
+  try {
+    const res = await fetch(`${ULTRAVOX_API_URL}/agents/${agentId}`, {
+      headers: headers(),
+      next: { revalidate: 300 }, // cache 5 min — prompts don't change often
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchAgentPrompts(): Promise<Record<string, string>> {
+  const agentIds: Record<string, string> = {
+    'Sales AI':              '65ae3d7d-5a1f-4880-89f4-1ce690efae89',
+    'Debt Collector':        '52db715f-fc68-4265-a354-7f64a27cd3b9',
+    'Cold Outreach':         '74c435db-0382-45d4-8f84-65343c0dde5f',
+    'NECTOR Demo':           '428d7591-3ba5-4b60-8aa5-a92012d12451',
+  };
+
+  const results = await Promise.all(
+    Object.entries(agentIds).map(async ([name, id]) => {
+      const agent = await fetchAgent(id);
+      return [name, agent?.systemPrompt ?? ''] as [string, string];
+    })
+  );
+
+  return Object.fromEntries(results);
+}
+
 export function calcCostUsd(durationSeconds: number): number {
   return (durationSeconds / 60) * 0.05;
 }

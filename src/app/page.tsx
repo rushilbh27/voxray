@@ -3,6 +3,9 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import type { ErrorAnalysis } from '@/lib/error-analyzer';
+import { fetchAgentPrompts } from '@/lib/ultravox';
+import { getApplicablePatches } from '@/lib/fix-specs';
+import { FixBlock } from '@/app/components/FixBlock';
 
 export const revalidate = 60;
 
@@ -127,6 +130,9 @@ export default async function Dashboard({
     : dateRange === '30d'
       ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
       : null;
+
+  // Fetch current agent prompts from Ultravox (cached 5 min) for smart fix checks
+  const agentPrompts = await fetchAgentPrompts();
 
   // All metrics in one query
   // Use parallel count queries (no row-transfer overhead) + a single range fetch
@@ -368,13 +374,24 @@ export default async function Dashboard({
                               )}
                             </div>
                           </div>
-                          {/* Fix suggestion */}
-                          {FIX_SUGGESTIONS[err.type] && (
-                            <div className="text-xs text-blue-800 bg-blue-50 border border-blue-100 rounded px-2 py-1.5 mt-1.5 leading-relaxed">
-                              <span className="font-bold">Fix: </span>
-                              {FIX_SUGGESTIONS[err.type]}
-                            </div>
-                          )}
+                          {/* Structured Find → Replace fix */}
+                          {(() => {
+                            // Use first affected agent's current prompt for staleness check
+                            const agentName = err.agents[0] ?? '';
+                            const promptText = agentPrompts[agentName] ?? '';
+                            const patches = getApplicablePatches(err.type, promptText);
+                            if (patches.length === 0) return null;
+                            return (
+                              <FixBlock
+                                patches={patches.map((p) => ({
+                                  label: p.patch.label,
+                                  find: p.patch.find,
+                                  replace: p.patch.replace,
+                                  alreadyFixed: p.alreadyFixed,
+                                }))}
+                              />
+                            );
+                          })()}
                           <div className="flex items-center justify-between mt-1">
                             <span className="text-xs text-gray-400">
                               {err.agents.slice(0, 3).join(' · ')}
