@@ -1,39 +1,103 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Voxray
 
-## Getting Started
+X-ray vision for Ultravox voice agents. Detects exact agent mistakes per call, surfaces error patterns, and generates precise Find→Replace prompt fixes.
 
-First, run the development server:
+**Live:** https://voxray.vercel.app
+
+---
+
+## What it does
+
+- Syncs all calls from Ultravox into Supabase
+- Runs Claude Haiku analysis on each call transcript — detects agent-specific rule violations
+- Error leaderboard with human-readable labels + structured prompt fixes (Find → Replace with copy buttons)
+- Fetches current agent system prompts from Ultravox to check if each fix was already applied
+- MCP server for AI agent access, REST API v1, CLI
+
+## Stack
+
+Next.js 16 · TypeScript · Tailwind · Supabase · Ultravox REST API · Claude Haiku
+
+---
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+
+# .env.local
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+ULTRAVOX_API_KEY=...
+ANTHROPIC_API_KEY=...
+DEMO_USER_EMAIL=...
+DEMO_USER_PASSWORD=...
+VOXRAY_URL=https://voxray.vercel.app
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+```bash
+npm run dev          # localhost:3000
+npm run sync         # pull latest calls from Ultravox
+npm run analyze      # batch analyze unanalyzed calls
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Commands
 
-## Learn More
+```bash
+npm run sync                    # sync latest 100 calls + auto-analyze new
+npm run sync:full               # sync ALL calls
+npm run analyze                 # batch analyze unanalyzed calls with messages
+npm run voxray stats            # CLI: dashboard metrics
+npm run voxray errors           # CLI: error leaderboard with fixes
+npm run voxray calls            # CLI: call list
+npm run voxray call <id>        # CLI: full call + transcript
+npm run voxray analyze <id>     # CLI: analyze one call
+npm run voxray sync             # CLI: trigger sync
+npm run voxray monitor          # CLI: watch for new critical errors
+npm run mcp                     # MCP server (stdio)
+TRANSPORT=http npm run mcp      # MCP server (HTTP :3001)
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API v1
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+GET  /api/v1/stats
+GET  /api/v1/errors?agent=X&limit=N
+GET  /api/v1/calls?agent=X&has_errors=true&page=N
+GET  /api/v1/calls/:id
+POST /api/sync
+POST /api/calls/:id/analyze
+```
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## MCP Server
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+7 tools: `voxray_get_stats` · `voxray_get_agent_summary` · `voxray_list_errors` · `voxray_list_calls` · `voxray_get_call` · `voxray_analyze_call` · `voxray_sync_calls`
 
+Add to Claude Code:
+```json
+// ~/.claude/mcp.json
+{
+  "mcpServers": {
+    "voxray": {
+      "command": "node",
+      "args": ["/path/to/voxray/voxray-mcp-server/dist/index.js"],
+      "env": { "VOXRAY_URL": "https://voxray.vercel.app" }
+    }
+  }
+}
+```
 
-Codex will review your output once you are done.
+---
+
+## Production Safety
+
+**NEVER POST/PATCH/DELETE to `api.ultravox.ai`** — live Uganda customers, ~100 calls/day. See `AGENTS.md`.
+
+Prompt fixes are **safe mode only** — Voxray suggests, human applies manually in Ultravox.
