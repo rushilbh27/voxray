@@ -30,14 +30,13 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
   const webhookUrl = `${process.env.VOXRAY_URL ?? 'https://voxray.vercel.app'}/api/webhook/transcript`;
 
   try {
-    // Fetch messages for Haiku fallback
     const { data: messages } = await supabaseAdmin
       .from('ultravox_messages')
       .select('role, text, ordinal')
       .eq('call_id', callId)
       .order('ordinal', { ascending: true });
 
-    const result = await analyzeCall({
+    const { analysis } = await analyzeCall({
       callId,
       agentId: call.agent_id ?? null,
       clientName: call.client_name ?? '',
@@ -45,21 +44,17 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       webhookUrl,
     });
 
-    if (result.method === 'text') {
-      // Haiku path — result available now, store immediately
-      await supabaseAdmin
-        .from('ultravox_calls')
-        .update({
-          call_errors: result.analysis,
-          analysis_status: 'complete',
-          error_count: result.analysis.error_count,
-          critical_error_count: result.analysis.critical_error_count,
-        })
-        .eq('call_id', callId);
-    }
-    // audio path — webhook will store when Llama responds
+    await supabaseAdmin
+      .from('ultravox_calls')
+      .update({
+        call_errors: analysis,
+        analysis_status: 'complete',
+        error_count: analysis.error_count,
+        critical_error_count: analysis.critical_error_count,
+      })
+      .eq('call_id', callId);
 
-    return NextResponse.json({ status: result.status, method: result.method });
+    return NextResponse.json({ status: 'complete', analysis });
   } catch (err) {
     await supabaseAdmin
       .from('ultravox_calls')
