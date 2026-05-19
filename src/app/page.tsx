@@ -18,6 +18,7 @@ interface SearchParams {
   status?: string;
   eagent?: string;  // error section agent filter
   range?: string;   // error section date range: 7d | 30d | all
+  compare?: string; // before/after comparison date: YYYY-MM-DD
 }
 
 const HUMAN_LABELS: Record<string, string> = {
@@ -126,6 +127,7 @@ export default async function Dashboard({
   const statusFilter = params.status ?? '';
   const errorAgent = params.eagent ?? '';
   const dateRange = params.range ?? 'all';
+  const compareDate = params.compare ?? '';
   const offset = (page - 1) * PAGE_SIZE;
 
   const since = dateRange === '7d'
@@ -275,6 +277,48 @@ export default async function Dashboard({
     return point;
   });
 
+  // Before/after comparison — only runs when ?compare=YYYY-MM-DD is set
+  interface ErrorDiff {
+    type: string;
+    before: number;
+    after: number;
+    delta: number; // negative = improved, positive = worsened
+  }
+  let comparisonData: ErrorDiff[] = [];
+  if (compareDate) {
+    const [beforeRows, afterRows] = await Promise.all([
+      supabaseAdmin.from('ultravox_calls')
+        .select('call_errors')
+        .eq('analysis_status', 'complete')
+        .gt('error_count', 0)
+        .lt('created_at', new Date(compareDate).toISOString())
+        .range(0, 9999),
+      supabaseAdmin.from('ultravox_calls')
+        .select('call_errors')
+        .eq('analysis_status', 'complete')
+        .gt('error_count', 0)
+        .gte('created_at', new Date(compareDate).toISOString())
+        .range(0, 9999),
+    ]);
+    const countErrors = (rows: typeof beforeRows.data) => {
+      const map: Record<string, number> = {};
+      for (const r of rows ?? []) {
+        const errs = (r.call_errors as ErrorAnalysis | null)?.errors ?? [];
+        for (const e of errs) map[e.type] = (map[e.type] || 0) + 1;
+      }
+      return map;
+    };
+    const beforeCounts = countErrors(beforeRows.data);
+    const afterCounts = countErrors(afterRows.data);
+    const allTypes = new Set([...Object.keys(beforeCounts), ...Object.keys(afterCounts)]);
+    comparisonData = Array.from(allTypes).map(type => ({
+      type,
+      before: beforeCounts[type] || 0,
+      after: afterCounts[type] || 0,
+      delta: (afterCounts[type] || 0) - (beforeCounts[type] || 0),
+    })).sort((a, b) => a.delta - b.delta); // most improved first
+  }
+
   // Alert check — run silently, catch errors so dashboard never breaks
   const activeAlerts = await import('@/lib/alert-engine')
     .then((m) => m.runAlertCheck())
@@ -399,6 +443,53 @@ export default async function Dashboard({
               </div>
             </div>
             <TrendChart data={trendData} agents={trendAgents} />
+          </div>
+        )}
+
+        {/* ── BEFORE / AFTER COMPARISON ── */}
+        {compareDate ? (
+          <div className="mb-8 bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Before / After: {compareDate}</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Error frequency before vs after fix date — negative delta = improved</p>
+              </div>
+              <a href="/" className="text-xs text-gray-400 hover:text-gray-700">✕ clear</a>
+            </div>
+            {comparisonData.length === 0 ? (
+              <div className="px-6 py-8 text-center text-gray-400 text-sm">No analyzed calls found around that date.</div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {comparisonData.map(d => {
+                  const improved = d.delta < 0;
+                  const worsened = d.delta > 0;
+                  const pctChange = d.before > 0
+                    ? Math.round(((d.after - d.before) / d.before) * 100)
+                    : d.after > 0 ? 100 : 0;
+                  return (
+                    <div key={d.type} className="px-6 py-3 flex items-center gap-4">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-mono text-gray-700">{d.type}</span>
+                        {HUMAN_LABELS[d.type] && (
+                          <span className="text-xs text-gray-400 ml-2">{HUMAN_LABELS[d.type]}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-6 text-sm shrink-0">
+                        <span className="text-gray-500 w-20 text-right">Before: <strong className="text-gray-800">{d.before}</strong></span>
+                        <span className="text-gray-500 w-20 text-right">After: <strong className="text-gray-800">{d.after}</strong></span>
+                        <span className={`w-20 text-right font-semibold ${improved ? 'text-green-600' : worsened ? 'text-red-600' : 'text-gray-400'}`}>
+                          {improved ? '▼' : worsened ? '▲' : '—'} {Math.abs(pctChange)}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="mb-6 text-xs text-gray-400">
+            Tip: add <code className="bg-gray-100 px-1 rounded">?compare=YYYY-MM-DD</code> to see before/after error comparison for any fix date.
           </div>
         )}
 
