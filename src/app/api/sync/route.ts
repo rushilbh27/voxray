@@ -8,6 +8,7 @@ import {
   calcCostUsd,
 } from '@/lib/ultravox';
 import { analyzeCallErrors, detectAgentType } from '@/lib/error-analyzer';
+import { runAlertCheck } from '@/lib/alert-engine';
 
 function parseDurationSeconds(d: string | null | undefined): number {
   if (!d) return 0;
@@ -127,7 +128,10 @@ export async function POST() {
       }
     }
 
-    return NextResponse.json({ synced, messages: msgTotal, analyzed, total: calls.length });
+    // Run alert check after analysis — fires Telegram if thresholds exceeded
+    const alerts = await runAlertCheck().catch(() => []);
+
+    return NextResponse.json({ synced, messages: msgTotal, analyzed, alerts: alerts.length, total: calls.length });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Sync failed' },

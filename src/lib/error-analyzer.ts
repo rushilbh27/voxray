@@ -70,6 +70,7 @@ AGENT TYPE: Sales AI (property/product outbound sales)
 RULES THIS AGENT MUST FOLLOW:
 1. Ask questions ONE AT A TIME — never stack multiple questions
 2. NEVER accept garbled/unclear answers — must ask "I'm sorry, could you repeat that?"
+2a. LOCATION ANSWERS: When asking "Any area in mind?", ONLY accept a clearly named recognizable Ugandan neighborhood (Bugolobi, Kira, Kiwatule, Naguru, Nalya, Namugongo, Kololo, Ntinda, etc.). If the customer's answer is unclear, noise, or not a real area — this is accepted_unknown_location (CRITICAL).
 3. NEVER accept a past date for appointment/callback — must reject and re-ask
 4. NEVER make promises it can't keep (e.g. "I'll send you floor plans", "Let me connect you now")
 5. After 3-4 answers, provide consultative value-add using context — don't just fire questions
@@ -80,7 +81,8 @@ RULES THIS AGENT MUST FOLLOW:
 10. When confused twice in a row → go back one step, re-ask the question
 
 ERROR TYPES TO DETECT:
-- accepted_garbled_audio: Agent treated unclear STT as valid answer
+- accepted_unknown_location: Agent accepted an unclear or unrecognizable area/neighborhood name as a valid answer (CRITICAL — use this when the customer's response to "Any area in mind?" was garbled, vague, or not a real Ugandan neighborhood, but agent proceeded anyway)
+- accepted_garbled_audio: Agent treated unclear STT as valid answer (general — not location-specific)
 - accepted_past_date: Agent accepted and saved a past date
 - broke_promise: Agent promised something it can't deliver
 - stacked_questions: Agent asked multiple questions at once

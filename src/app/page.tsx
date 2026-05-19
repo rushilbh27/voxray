@@ -21,6 +21,7 @@ interface SearchParams {
 }
 
 const HUMAN_LABELS: Record<string, string> = {
+  accepted_unknown_location: 'Agent accepted an unrecognizable area name (cannot recognize area)',
   accepted_garbled_audio:   'Accepted unclear audio as a valid answer',
   no_save_answers:          'Call ended without saving answers — data lost',
   no_consultation:          'No value-add after collecting requirements',
@@ -273,6 +274,11 @@ export default async function Dashboard({
     return point;
   });
 
+  // Alert check — run silently, catch errors so dashboard never breaks
+  const activeAlerts = await import('@/lib/alert-engine')
+    .then((m) => m.runAlertCheck())
+    .catch(() => [] as import('@/lib/alert-engine').FiredAlert[]);
+
   // Paginated call list
   let query = supabaseAdmin
     .from('ultravox_calls')
@@ -329,6 +335,37 @@ export default async function Dashboard({
             </div>
           ))}
         </div>
+
+        {/* ── ACTIVE ALERTS BANNER ── */}
+        {activeAlerts.length > 0 && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 overflow-hidden">
+            <div className="px-4 py-2.5 bg-red-100 border-b border-red-200 flex items-center gap-2">
+              <span className="text-red-700 font-bold text-sm">⚡ Active Alerts</span>
+              <span className="text-xs text-red-500">{activeAlerts.length} rule{activeAlerts.length > 1 ? 's' : ''} triggered in the last few hours</span>
+            </div>
+            <div className="divide-y divide-red-100">
+              {activeAlerts.map((alert, i) => (
+                <div key={i} className="px-4 py-2.5 flex items-start gap-3">
+                  <span className="text-base shrink-0 mt-0.5">
+                    {alert.severity === 'critical' ? '🔴' : alert.severity === 'warning' ? '🟡' : 'ℹ️'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-semibold text-red-900">{alert.label}</span>
+                    <span className="ml-2 text-xs text-red-600">
+                      {alert.agent} · {alert.count} call{alert.count > 1 ? 's' : ''}
+                    </span>
+                    <div className="text-xs text-red-500 font-mono mt-0.5">
+                      example: <Link href={`/calls/${alert.example_call_id}`} className="underline hover:text-red-700">{alert.example_call_id.substring(0, 20)}…</Link>
+                    </div>
+                  </div>
+                  <span className="text-xs text-red-400 shrink-0">
+                    {new Date(alert.fired_at).toLocaleTimeString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── TREND CHART ── */}
         {trendData.length > 0 && (

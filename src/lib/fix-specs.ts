@@ -16,6 +16,37 @@ export interface FixSpec {
 
 export const FIX_SPECS: Record<string, FixSpec> = {
 
+  accepted_unknown_location: {
+    patches: [{
+      label: 'Enforce location recognition — reject unclear area names',
+      find: `LOCATION ANSWER RULE (CRITICAL):
+When you ask "Any area in mind?" and the customer's response
+does not clearly name a recognizable neighborhood or area
+(Bugolobi, Kira, Kiwatule, Naguru, Nalya, Namugongo, etc.):`,
+      replace: `LOCATION ANSWER RULE (CRITICAL — READ EVERY TURN WHEN ASKING ABOUT AREA):
+When you ask "Any area in mind?" and the customer's response
+does not clearly name a recognizable neighborhood or area
+(Bugolobi, Kira, Kiwatule, Naguru, Nalya, Namugongo, Kololo, Ntinda, Muyenga, Bukoto, etc.):
+
+DO NOT guess.
+DO NOT infer from context.
+DO NOT pick a location on their behalf.
+DO NOT accept phonetic approximations or partial matches.
+
+If response sounds like a location but is unclear → still ask for clarification.
+If response is noise, background audio, or unrelated → treat as garbled audio.
+
+Say: "I'm sorry... I didn't quite catch that...
+which area were you thinking of?..."
+
+CONFUSION LOOP PREVENTION for location:
+If the customer has failed to name a clear area TWICE in a row:
+Say: "Not a problem at all... uhm... if you're not sure about the area yet,
+that's perfectly fine — we can discuss that with our team when they follow up."
+Then accept null for that field and move on.`,
+    }],
+  },
+
   accepted_garbled_audio: {
     patches: [{
       label: 'Add garbled audio counter rule (second attempt = exit)',
