@@ -1,26 +1,61 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ── Design tokens ─────────────────────────────────────────── */
+@theme {
+  /* Surfaces */
+  --color-canvas:        oklch(97% 0.005 65);
+  --color-surface:       oklch(99.5% 0.002 65);
+  --color-surface-2:     oklch(95% 0.007 68);
+
+  /* Borders */
+  --color-border:        oklch(89% 0.006 65);
+  --color-border-subtle: oklch(93.5% 0.004 65);
+
+  /* Ink (text) */
+  --color-ink:           oklch(17% 0.013 65);
+  --color-ink-2:         oklch(42% 0.010 65);
+  --color-ink-3:         oklch(63% 0.007 65);
+
+  /* Accent — deep violet, not standard blue */
+  --color-accent:        oklch(44% 0.165 265);
+  --color-accent-hover:  oklch(40% 0.180 265);
+  --color-accent-bg:     oklch(95.5% 0.042 265);
+  --color-accent-border: oklch(84% 0.060 265);
+
+  /* Critical */
+  --color-crit:          oklch(51% 0.215 22);
+  --color-crit-bg:       oklch(96.5% 0.038 22);
+  --color-crit-border:   oklch(84% 0.065 22);
+
+  /* Warning */
+  --color-warn:          oklch(58% 0.160 55);
+  --color-warn-bg:       oklch(96.5% 0.030 55);
+  --color-warn-border:   oklch(85% 0.055 55);
+
+  /* OK / success */
+  --color-ok:            oklch(50% 0.130 152);
+  --color-ok-bg:         oklch(96.5% 0.028 152);
+  --color-ok-border:     oklch(84% 0.052 152);
+
+  /* Fonts */
+  --font-sans:           var(--font-geist-sans);
+  --font-mono:           var(--font-geist-mono);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ── Base ────────────────────────────────────────────────────── */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: oklch(84% 0.005 65); border-radius: 3px; }

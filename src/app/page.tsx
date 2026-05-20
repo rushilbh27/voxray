@@ -10,6 +10,7 @@ import { TrendChart } from '@/app/components/TrendChart';
 import { LogFixButton } from '@/app/components/LogFixButton';
 import { AckAlertButton } from '@/app/components/AckAlertButton';
 import { FalsePositiveButton } from '@/app/components/FalsePositiveButton';
+import { Nav } from '@/app/components/Nav';
 
 export const revalidate = 60;
 
@@ -19,34 +20,34 @@ interface SearchParams {
   page?: string;
   client?: string;
   status?: string;
-  eagent?: string;  // error section agent filter
-  range?: string;   // error section date range: 7d | 30d | all
-  compare?: string; // before/after comparison date: YYYY-MM-DD
+  eagent?: string;
+  range?: string;
+  compare?: string;
 }
 
 const HUMAN_LABELS: Record<string, string> = {
-  accepted_unknown_location: 'Agent accepted an unrecognizable area name (cannot recognize area)',
-  accepted_garbled_audio:   'Accepted unclear audio as a valid answer',
-  no_save_answers:          'Call ended without saving answers — data lost',
+  accepted_unknown_location: 'Accepted unrecognizable area name',
+  accepted_garbled_audio:   'Accepted unclear audio as valid answer',
+  no_save_answers:          'Call ended without saving answers',
   no_consultation:          'No value-add after collecting requirements',
   stacked_questions:        'Asked multiple questions at once',
-  no_product_context:       'Stated amount before explaining the product',
-  no_save_debt:             'Call ended without saving debt data — data lost',
+  no_product_context:       'Stated amount before explaining product',
+  no_save_debt:             'Call ended without saving debt data',
   accepted_past_date:       'Accepted a date that already passed',
   skipped_repeat_rule:      "Didn't repeat after customer said 'sorry?'",
-  broke_promise:            "Promised something the agent can't deliver",
-  wrong_opening:            "Used 'Am I speaking with?' on a cold call",
-  restart_loop:             'Restarted full greeting after customer interrupted',
-  no_name_collected:        'Collected answers without getting customer name first',
-  calculated_balance:       'Calculated remaining balance (explicitly forbidden)',
-  invented_amount:          'Stated an amount not from context variables',
-  accepted_vague_date:      "Accepted vague date like 'soon' or 'next week'",
+  broke_promise:            "Promised something agent can't deliver",
+  wrong_opening:            "Used 'Am I speaking with?' on cold call",
+  restart_loop:             'Restarted full greeting after interruption',
+  no_name_collected:        'Collected answers without getting name first',
+  calculated_balance:       'Calculated remaining balance (forbidden)',
+  invented_amount:          'Stated amount not from context variables',
+  accepted_vague_date:      "Accepted vague date like 'soon'",
   wrong_person_handling:    'Wrong number not closed with WhatsApp redirect',
   spoke_luganda:            'Used Luganda instead of redirect script',
-  no_commitment:            'Call ended with no payment commitment or escalation',
-  pushed_back:              'Argued or re-pitched after customer said not interested',
+  no_commitment:            'Call ended with no payment commitment',
+  pushed_back:              'Argued after customer said not interested',
   wrong_info:               'Stated incorrect property or price details',
-  wrong_call_type:          'Executed wrong call flow (inbound treated as outbound or vice versa)',
+  wrong_call_type:          'Executed wrong call flow',
 };
 
 const FIX_SUGGESTIONS: Record<string, string> = {
@@ -121,9 +122,8 @@ export default async function Dashboard({
 }) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    redirect('/login');
-  }
+  if (!user) redirect('/login');
+
   const params = await searchParams;
   const page = Math.max(1, parseInt(params.page ?? '1', 10));
   const clientFilter = params.client ?? '';
@@ -139,12 +139,8 @@ export default async function Dashboard({
       ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
       : null;
 
-  // Fetch current agent prompts from Ultravox (cached 5 min) for smart fix checks
   const agentPrompts = await fetchAgentPrompts();
 
-  // All metrics in one query
-  // Use parallel count queries (no row-transfer overhead) + a single range fetch
-  // for cost/duration aggregates. Avoids the Supabase 1000-row default cap.
   const [
     { count: totalCalls },
     { count: endedCount },
@@ -156,83 +152,50 @@ export default async function Dashboard({
   ] = await Promise.all([
     supabaseAdmin.from('ultravox_calls').select('*', { count: 'exact', head: true }),
     supabaseAdmin.from('ultravox_calls').select('*', { count: 'exact', head: true }).eq('status', 'ended'),
-    supabaseAdmin.from('ultravox_calls').select('*', { count: 'exact', head: true })
-      .eq('status', 'ended')
-      .not('ended_reason', 'in', '(error,unjoined)'),
+    supabaseAdmin.from('ultravox_calls').select('*', { count: 'exact', head: true }).eq('status', 'ended').not('ended_reason', 'in', '(error,unjoined)'),
     supabaseAdmin.from('ultravox_calls').select('*', { count: 'exact', head: true }).eq('status', 'active'),
     supabaseAdmin.from('ultravox_calls').select('*', { count: 'exact', head: true }).eq('analysis_status', 'complete'),
     supabaseAdmin.from('ultravox_calls').select('*', { count: 'exact', head: true }).gt('error_count', 0).eq('analysis_status', 'complete'),
     supabaseAdmin.from('ultravox_calls').select('cost_usd, duration_seconds').range(0, 9999),
   ]);
 
-  const successRate = (endedCount ?? 0) > 0
-    ? Math.round(((successfulCount ?? 0) / (endedCount ?? 1)) * 100)
-    : 0;
-  const totalCost = aggregateRows?.reduce((sum, c) => sum + (c.cost_usd || 0), 0) || 0;
+  const successRate = (endedCount ?? 0) > 0 ? Math.round(((successfulCount ?? 0) / (endedCount ?? 1)) * 100) : 0;
+  const totalCost = aggregateRows?.reduce((s, c) => s + (c.cost_usd || 0), 0) || 0;
   const callsWithDuration = aggregateRows?.filter((c) => (c.duration_seconds || 0) > 0) || [];
   const avgDuration = callsWithDuration.length > 0
-    ? Math.round(callsWithDuration.reduce((sum, c) => sum + (c.duration_seconds || 0), 0) / callsWithDuration.length)
+    ? Math.round(callsWithDuration.reduce((s, c) => s + (c.duration_seconds || 0), 0) / callsWithDuration.length)
     : 0;
-  const errorRate = (totalAnalyzed ?? 0) > 0
-    ? Math.round(((callsWithErrors ?? 0) / (totalAnalyzed ?? 1)) * 100)
-    : 0;
+  const errorRate = (totalAnalyzed ?? 0) > 0 ? Math.round(((callsWithErrors ?? 0) / (totalAnalyzed ?? 1)) * 100) : 0;
 
-  // Error intelligence data — filtered by agent + date range
   let errorQuery = supabaseAdmin
     .from('ultravox_calls')
     .select('call_id, client_name, call_errors, error_count, critical_error_count, created_at, duration_seconds')
-    .eq('analysis_status', 'complete')
-    .gt('error_count', 0)
-    .order('critical_error_count', { ascending: false })
-    .range(0, 9999);
+    .eq('analysis_status', 'complete').gt('error_count', 0)
+    .order('critical_error_count', { ascending: false }).range(0, 9999);
   if (errorAgent) errorQuery = errorQuery.eq('client_name', errorAgent);
   if (since) errorQuery = errorQuery.gt('created_at', since);
   const { data: errorCalls } = await errorQuery;
 
   interface ErrorFrequency {
-    type: string;
-    count: number;
-    critical_count: number;
-    example_call: string;
-    example_line: string;
-    agents: string[];
+    type: string; count: number; critical_count: number;
+    example_call: string; example_line: string; agents: string[];
   }
-
   const freqMap = new Map<string, ErrorFrequency>();
   for (const call of errorCalls ?? []) {
     const analysis = call.call_errors as ErrorAnalysis | null;
     if (!analysis?.errors) continue;
     for (const err of analysis.errors) {
-      if (!freqMap.has(err.type)) {
-        freqMap.set(err.type, {
-          type: err.type,
-          count: 0,
-          critical_count: 0,
-          example_call: call.call_id,
-          example_line: err.agent_line ?? '',
-          agents: [],
-        });
-      }
+      if (!freqMap.has(err.type)) freqMap.set(err.type, { type: err.type, count: 0, critical_count: 0, example_call: call.call_id, example_line: err.agent_line ?? '', agents: [] });
       const freq = freqMap.get(err.type)!;
       freq.count++;
       if (err.severity === 'critical') freq.critical_count++;
       if (!freq.agents.includes(call.client_name)) freq.agents.push(call.client_name);
     }
   }
-
   const topErrors = Array.from(freqMap.values()).sort((a, b) => b.count - a.count);
-  const worstCalls = [...(errorCalls ?? [])]
-    .sort((a, b) => (b.critical_error_count ?? 0) - (a.critical_error_count ?? 0))
-    .slice(0, 8);
+  const worstCalls = [...(errorCalls ?? [])].sort((a, b) => (b.critical_error_count ?? 0) - (a.critical_error_count ?? 0)).slice(0, 8);
 
-  // Cost per error type — sum cost_usd of calls containing each error type
-  const { data: costRows } = await supabaseAdmin
-    .from('ultravox_calls')
-    .select('call_errors, cost_usd, created_at')
-    .eq('analysis_status', 'complete')
-    .gt('error_count', 0)
-    .range(0, 9999);
-
+  const { data: costRows } = await supabaseAdmin.from('ultravox_calls').select('call_errors, cost_usd, created_at').eq('analysis_status', 'complete').gt('error_count', 0).range(0, 9999);
   const errorCostMap: Record<string, number> = {};
   const firstCallDate = costRows?.length ? new Date(costRows[costRows.length - 1].created_at as string) : new Date();
   const weeksOfData = Math.max(1, Math.round((Date.now() - firstCallDate.getTime()) / (7 * 24 * 60 * 60 * 1000)));
@@ -240,39 +203,18 @@ export default async function Dashboard({
     const errs = (row.call_errors as ErrorAnalysis | null)?.errors ?? [];
     const cost = (row.cost_usd as number) ?? 0;
     const seen = new Set<string>();
-    for (const e of errs) {
-      if (!seen.has(e.type)) {
-        errorCostMap[e.type] = (errorCostMap[e.type] ?? 0) + cost;
-        seen.add(e.type);
-      }
-    }
+    for (const e of errs) { if (!seen.has(e.type)) { errorCostMap[e.type] = (errorCostMap[e.type] ?? 0) + cost; seen.add(e.type); } }
   }
 
-  // False positives — fetch all so we can mark them in UI
-  const { data: fpRows } = await supabaseAdmin
-    .from('false_positives')
-    .select('call_id, error_type');
+  const { data: fpRows } = await supabaseAdmin.from('false_positives').select('call_id, error_type');
   const fpSet = new Set((fpRows ?? []).map((r) => `${r.call_id}::${r.error_type}`));
 
-  // Client breakdown — all rows
-  const { data: clientBreakdown } = await supabaseAdmin
-    .from('ultravox_calls')
-    .select('client_name')
-    .range(0, 9999);
+  const { data: clientBreakdown } = await supabaseAdmin.from('ultravox_calls').select('client_name').range(0, 9999);
   const clientCounts: Record<string, number> = {};
-  for (const c of clientBreakdown || []) {
-    clientCounts[c.client_name] = (clientCounts[c.client_name] || 0) + 1;
-  }
+  for (const c of clientBreakdown || []) clientCounts[c.client_name] = (clientCounts[c.client_name] || 0) + 1;
   const clients = Object.entries(clientCounts).sort((a, b) => b[1] - a[1]);
 
-  // Trend data — weekly error rate per agent (last 12 weeks, analyzed calls only)
-  const { data: trendRaw } = await supabaseAdmin
-    .from('ultravox_calls')
-    .select('client_name, created_at, error_count, analysis_status')
-    .eq('analysis_status', 'complete')
-    .order('created_at', { ascending: true })
-    .range(0, 9999);
-
+  const { data: trendRaw } = await supabaseAdmin.from('ultravox_calls').select('client_name, created_at, error_count, analysis_status').eq('analysis_status', 'complete').order('created_at', { ascending: true }).range(0, 9999);
   type WeekMap = Map<string, { analyzed: number; errors: number }>;
   const trendByAgent: Record<string, WeekMap> = {};
   for (const c of trendRaw ?? []) {
@@ -288,12 +230,7 @@ export default async function Dashboard({
     entry.analyzed++;
     if ((c.error_count as number ?? 0) > 0) entry.errors++;
   }
-
-  // Build chart-ready array (last 12 weeks across all agents)
-  const allWeeks = [...new Set(
-    Object.values(trendByAgent).flatMap((wm) => [...wm.keys()])
-  )].sort().slice(-12);
-
+  const allWeeks = [...new Set(Object.values(trendByAgent).flatMap((wm) => [...wm.keys()]))].sort().slice(-12);
   const trendAgents = Object.keys(trendByAgent).filter((a) => a !== 'NECTOR Demo');
   const trendData = allWeeks.map((wk) => {
     const [yr, w] = wk.split('-W').map(Number);
@@ -302,327 +239,168 @@ export default async function Dashboard({
     const point = { week: wk, label } as import('@/app/components/TrendChart').TrendPoint;
     for (const agent of trendAgents) {
       const entry = trendByAgent[agent]?.get(wk);
-      point[agent] = entry && entry.analyzed > 0
-        ? Math.round((entry.errors / entry.analyzed) * 100)
-        : 0;
+      point[agent] = entry && entry.analyzed > 0 ? Math.round((entry.errors / entry.analyzed) * 100) : 0;
     }
     return point;
   });
 
-  // Before/after comparison — only runs when ?compare=YYYY-MM-DD is set
-  interface ErrorDiff {
-    type: string;
-    before: number;
-    after: number;
-    delta: number; // negative = improved, positive = worsened
-  }
+  interface ErrorDiff { type: string; before: number; after: number; delta: number; }
   let comparisonData: ErrorDiff[] = [];
   if (compareDate) {
     const [beforeRows, afterRows] = await Promise.all([
-      supabaseAdmin.from('ultravox_calls')
-        .select('call_errors')
-        .eq('analysis_status', 'complete')
-        .gt('error_count', 0)
-        .lt('created_at', new Date(compareDate).toISOString())
-        .range(0, 9999),
-      supabaseAdmin.from('ultravox_calls')
-        .select('call_errors')
-        .eq('analysis_status', 'complete')
-        .gt('error_count', 0)
-        .gte('created_at', new Date(compareDate).toISOString())
-        .range(0, 9999),
+      supabaseAdmin.from('ultravox_calls').select('call_errors').eq('analysis_status', 'complete').gt('error_count', 0).lt('created_at', new Date(compareDate).toISOString()).range(0, 9999),
+      supabaseAdmin.from('ultravox_calls').select('call_errors').eq('analysis_status', 'complete').gt('error_count', 0).gte('created_at', new Date(compareDate).toISOString()).range(0, 9999),
     ]);
-    const countErrors = (rows: typeof beforeRows.data) => {
-      const map: Record<string, number> = {};
-      for (const r of rows ?? []) {
-        const errs = (r.call_errors as ErrorAnalysis | null)?.errors ?? [];
-        for (const e of errs) map[e.type] = (map[e.type] || 0) + 1;
-      }
-      return map;
-    };
+    const countErrors = (rows: typeof beforeRows.data) => { const map: Record<string, number> = {}; for (const r of rows ?? []) { const errs = (r.call_errors as ErrorAnalysis | null)?.errors ?? []; for (const e of errs) map[e.type] = (map[e.type] || 0) + 1; } return map; };
     const beforeCounts = countErrors(beforeRows.data);
     const afterCounts = countErrors(afterRows.data);
     const allTypes = new Set([...Object.keys(beforeCounts), ...Object.keys(afterCounts)]);
-    comparisonData = Array.from(allTypes).map(type => ({
-      type,
-      before: beforeCounts[type] || 0,
-      after: afterCounts[type] || 0,
-      delta: (afterCounts[type] || 0) - (beforeCounts[type] || 0),
-    })).sort((a, b) => a.delta - b.delta); // most improved first
+    comparisonData = Array.from(allTypes).map(type => ({ type, before: beforeCounts[type] || 0, after: afterCounts[type] || 0, delta: (afterCounts[type] || 0) - (beforeCounts[type] || 0) })).sort((a, b) => a.delta - b.delta);
   }
 
-  // Alert check — run silently, catch errors so dashboard never breaks
-  const activeAlerts = await import('@/lib/alert-engine')
-    .then((m) => m.runAlertCheck())
-    .catch(() => [] as import('@/lib/alert-engine').FiredAlert[]);
+  const activeAlerts = await import('@/lib/alert-engine').then((m) => m.runAlertCheck()).catch(() => [] as import('@/lib/alert-engine').FiredAlert[]);
 
-  // Paginated call list
-  let query = supabaseAdmin
-    .from('ultravox_calls')
-    .select('*', { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1);
+  let query = supabaseAdmin.from('ultravox_calls').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(offset, offset + PAGE_SIZE - 1);
   if (clientFilter) query = query.eq('client_name', clientFilter);
   if (statusFilter) query = query.eq('status', statusFilter);
-
   const { data: calls, count: filteredTotal } = await query;
   const totalPages = Math.ceil((filteredTotal || 0) / PAGE_SIZE);
 
   function buildUrl(overrides: Record<string, string>) {
     const p = { page: String(page), client: clientFilter, status: statusFilter, eagent: errorAgent, range: dateRange === 'all' ? '' : dateRange, ...overrides };
-    const qs = Object.entries(p)
-      .filter(([, v]) => v)
-      .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
-      .join('&');
+    const qs = Object.entries(p).filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
     return qs ? `/?${qs}` : '/';
   }
 
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  const analyzed = totalAnalyzed ?? 0;
+  const analysisPct = (totalCalls ?? 0) > 0 ? Math.round((analyzed / (totalCalls ?? 1)) * 100) : 0;
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto p-6 md:p-8">
+    <div className="min-h-screen bg-canvas">
+      <Nav />
 
-        {/* Header */}
-        <div className="mb-8 flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Voxray</h1>
-            <p className="text-gray-500 mt-1">X-ray vision for your voice agents</p>
-          </div>
-          <form action="/api/logout" method="POST">
-            <button type="submit" className="text-sm text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded border border-gray-200 hover:border-gray-400 transition-colors">
-              Sign out
-            </button>
-          </form>
-        </div>
+      <main className="max-w-7xl mx-auto px-6 pb-16">
 
-        {/* ── SECTION 1: METRICS ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-8">
+        {/* ── STAT STRIP ─────────────────────────────────────────────────────── */}
+        <div className="py-6 border-b border-border mb-8 grid grid-cols-4 md:grid-cols-7 gap-6">
           {[
-            { label: 'Total Calls', value: (totalCalls ?? 0).toLocaleString(), color: 'text-gray-900' },
-            { label: 'Success Rate', value: `${successRate}%`, color: 'text-green-600' },
-            { label: 'Total Cost', value: `$${totalCost.toFixed(2)}`, color: 'text-gray-900' },
-            {
-              label: 'Avg Duration',
-              value: `${Math.floor(avgDuration / 60)}m ${avgDuration % 60}s`,
-              color: 'text-gray-900',
-            },
-            { label: 'Active Now', value: String(activeCalls ?? 0), color: 'text-blue-600' },
-            { label: 'Analyzed', value: String(totalAnalyzed ?? 0), color: 'text-gray-700' },
-            {
-              label: 'Error Rate',
-              value: `${errorRate}%`,
-              color: errorRate > 50 ? 'text-red-600' : errorRate > 25 ? 'text-orange-500' : 'text-green-600',
-            },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="bg-white rounded-lg shadow p-4">
-              <div className="text-xs text-gray-500 mb-1 uppercase tracking-wide">{label}</div>
-              <div className={`text-xl font-bold ${color}`}>{value}</div>
+            { label: 'Total Calls', value: (totalCalls ?? 0).toLocaleString(), hi: false },
+            { label: 'Success Rate', value: `${successRate}%`, hi: successRate < 70 },
+            { label: 'Error Rate', value: `${errorRate}%`, hi: errorRate > 50, crit: errorRate > 70 },
+            { label: 'Avg Duration', value: `${Math.floor(avgDuration / 60)}m ${avgDuration % 60}s`, hi: false },
+            { label: 'Total Cost', value: `$${totalCost.toFixed(2)}`, hi: false },
+            { label: 'Analyzed', value: `${analyzed.toLocaleString()} (${analysisPct}%)`, hi: analysisPct < 50 },
+            { label: 'Live Now', value: String(activeCalls ?? 0), hi: false, live: (activeCalls ?? 0) > 0 },
+          ].map(({ label, value, hi, crit, live }) => (
+            <div key={label}>
+              <div className="text-[11px] font-medium text-ink-3 uppercase tracking-wider mb-1">{label}</div>
+              <div className={`text-xl font-bold tabular-nums ${
+                crit ? 'text-crit' : hi ? 'text-warn' : live ? 'text-accent' : 'text-ink'
+              }`}>{value}</div>
             </div>
           ))}
         </div>
 
-        {/* ── ACTIVE ALERTS BANNER ── */}
+        {/* ── ALERTS ─────────────────────────────────────────────────────────── */}
         {activeAlerts.length > 0 && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 overflow-hidden">
-            <div className="px-4 py-2.5 bg-red-100 border-b border-red-200 flex items-center gap-2">
-              <span className="text-red-700 font-bold text-sm">⚡ Active Alerts</span>
-              <span className="text-xs text-red-500">{activeAlerts.length} rule{activeAlerts.length > 1 ? 's' : ''} triggered in the last few hours</span>
+          <div className="mb-8 rounded-xl border border-crit-border bg-crit-bg overflow-hidden">
+            <div className="px-5 py-3 border-b border-crit-border flex items-center gap-2">
+              <span className="text-sm font-semibold text-crit">Active Alerts</span>
+              <span className="text-xs text-crit opacity-70">{activeAlerts.length} rule{activeAlerts.length > 1 ? 's' : ''} triggered</span>
             </div>
-            <div className="divide-y divide-red-100">
+            <div className="divide-y divide-crit-border divide-opacity-40">
               {activeAlerts.map((alert, i) => (
-                <div key={i} className="px-4 py-2.5 flex items-start gap-3">
-                  <span className="text-base shrink-0 mt-0.5">
-                    {alert.severity === 'critical' ? '🔴' : alert.severity === 'warning' ? '🟡' : 'ℹ️'}
+                <div key={i} className="px-5 py-3 flex items-center gap-4">
+                  <span className="text-base shrink-0">
+                    {alert.severity === 'critical' ? '🔴' : '🟡'}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-semibold text-red-900">{alert.label}</span>
-                    <span className="ml-2 text-xs text-red-600">
-                      {alert.agent} · {alert.count} call{alert.count > 1 ? 's' : ''}
-                    </span>
-                    <div className="text-xs text-red-500 font-mono mt-0.5">
-                      example: <Link href={`/calls/${alert.example_call_id}`} className="underline hover:text-red-700">{alert.example_call_id.substring(0, 20)}…</Link>
+                    <span className="text-sm font-medium text-ink">{alert.label}</span>
+                    <span className="ml-2 text-xs text-ink-2">{alert.agent} · {alert.count} call{alert.count > 1 ? 's' : ''}</span>
+                    <div className="text-xs text-ink-3 font-mono mt-0.5">
+                      <Link href={`/calls/${alert.example_call_id}`} className="hover:text-accent transition-colors">
+                        {alert.example_call_id.substring(0, 24)}…
+                      </Link>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <AckAlertButton ruleId={alert.rule_id} agent={alert.agent} />
-                    <span className="text-xs text-red-400">{new Date(alert.fired_at).toLocaleTimeString()}</span>
-                  </div>
+                  <AckAlertButton ruleId={alert.rule_id} agent={alert.agent} />
+                  <span className="text-xs text-ink-3 shrink-0">{new Date(alert.fired_at).toLocaleTimeString()}</span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* ── TREND CHART ── */}
-        {trendData.length > 0 && (
-          <div className="bg-white rounded-lg shadow mb-8 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">Error Rate Trend</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Weekly error rate per agent (analyzed calls)</p>
-              </div>
-              <div className="flex gap-2">
-                <a
-                  href="/api/v1/export?type=errors"
-                  className="px-3 py-1.5 text-xs rounded-md border border-gray-200 text-gray-600 hover:border-gray-400 hover:text-gray-800 transition-colors"
-                >
-                  ↓ Export errors CSV
-                </a>
-                <a
-                  href="/api/v1/export?type=worst_calls"
-                  className="px-3 py-1.5 text-xs rounded-md border border-gray-200 text-gray-600 hover:border-gray-400 hover:text-gray-800 transition-colors"
-                >
-                  ↓ Export worst calls CSV
-                </a>
-              </div>
-            </div>
-            <TrendChart data={trendData} agents={trendAgents} />
-          </div>
-        )}
-
-        {/* ── BEFORE / AFTER COMPARISON ── */}
-        {compareDate ? (
-          <div className="mb-8 bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">Before / After: {compareDate}</h2>
-                <p className="text-sm text-gray-500 mt-0.5">Error frequency before vs after fix date — negative delta = improved</p>
-              </div>
-              <a href="/" className="text-xs text-gray-400 hover:text-gray-700">✕ clear</a>
-            </div>
-            {comparisonData.length === 0 ? (
-              <div className="px-6 py-8 text-center text-gray-400 text-sm">No analyzed calls found around that date.</div>
-            ) : (
-              <div className="divide-y divide-gray-50">
-                {comparisonData.map(d => {
-                  const improved = d.delta < 0;
-                  const worsened = d.delta > 0;
-                  const pctChange = d.before > 0
-                    ? Math.round(((d.after - d.before) / d.before) * 100)
-                    : d.after > 0 ? 100 : 0;
-                  return (
-                    <div key={d.type} className="px-6 py-3 flex items-center gap-4">
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-mono text-gray-700">{d.type}</span>
-                        {HUMAN_LABELS[d.type] && (
-                          <span className="text-xs text-gray-400 ml-2">{HUMAN_LABELS[d.type]}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-6 text-sm shrink-0">
-                        <span className="text-gray-500 w-20 text-right">Before: <strong className="text-gray-800">{d.before}</strong></span>
-                        <span className="text-gray-500 w-20 text-right">After: <strong className="text-gray-800">{d.after}</strong></span>
-                        <span className={`w-20 text-right font-semibold ${improved ? 'text-green-600' : worsened ? 'text-red-600' : 'text-gray-400'}`}>
-                          {improved ? '▼' : worsened ? '▲' : '—'} {Math.abs(pctChange)}%
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="mb-6 text-xs text-gray-400">
-            Tip: add <code className="bg-gray-100 px-1 rounded">?compare=YYYY-MM-DD</code> to see before/after error comparison for any fix date.
-          </div>
-        )}
-
-        {/* ── SECTION 2: ERROR INTELLIGENCE ── */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-3">
+        {/* ── ERROR INTELLIGENCE ─────────────────────────────────────────────── */}
+        <section className="mb-10">
+          {/* Section header + filters */}
+          <div className="flex items-end justify-between gap-4 mb-5">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Error Intelligence</h2>
-              <p className="text-sm text-gray-500 mt-0.5">
-                {errorCalls?.length ?? 0} calls with errors · {topErrors.length} error types
-                {(errorAgent || dateRange !== 'all') && (
-                  <span className="text-blue-500"> (filtered)</span>
-                )}
-              </p>
+              <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Error Intelligence</div>
+              <h2 className="text-xl font-bold text-ink leading-none">
+                {topErrors.length} error type{topErrors.length !== 1 ? 's' : ''}
+                <span className="text-ink-3 font-normal text-base ml-2">across {errorCalls?.length ?? 0} calls</span>
+              </h2>
             </div>
-            <span className="text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-3 py-1">
-              {totalAnalyzed ?? 0} analyzed
-            </span>
-          </div>
-
-          {/* Error filters */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {/* Agent filter */}
-            {(['', ...clients.map(([n]) => n)] as string[]).map((name) => (
-              <Link
-                key={name || '__all__'}
-                href={buildUrl({ eagent: name, page: '1' })}
-                className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                  errorAgent === name
-                    ? 'bg-gray-900 text-white border-gray-900'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
-                }`}
-              >
-                {name || 'All agents'}
-              </Link>
-            ))}
-            <span className="w-px h-5 bg-gray-200 self-center mx-1" />
-            {/* Date range filter */}
-            {(['all', '30d', '7d'] as const).map((r) => (
-              <Link
-                key={r}
-                href={buildUrl({ range: r === 'all' ? '' : r, page: '1' })}
-                className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                  dateRange === r
-                    ? 'bg-gray-900 text-white border-gray-900'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
-                }`}
-              >
-                {r === 'all' ? 'All time' : `Last ${r}`}
-              </Link>
-            ))}
+            <div className="flex items-center gap-3 shrink-0">
+              {/* Agent filter */}
+              <div className="flex gap-1">
+                <Link href={buildUrl({ eagent: '', page: '1' })} className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${!errorAgent ? 'bg-ink text-surface border-ink' : 'border-border text-ink-2 hover:border-ink-3'}`}>All</Link>
+                {['Sales AI','Debt Collector','Cold Outreach'].map(a => (
+                  <Link key={a} href={buildUrl({ eagent: a, page: '1' })} className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${errorAgent === a ? 'bg-ink text-surface border-ink' : 'border-border text-ink-2 hover:border-ink-3'}`}>{a.split(' ')[0]}</Link>
+                ))}
+              </div>
+              {/* Date range */}
+              <div className="flex gap-1">
+                {[['all','All time'],['30d','30d'],['7d','7d']].map(([v, l]) => (
+                  <Link key={v} href={buildUrl({ range: v === 'all' ? '' : v, page: '1' })} className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${(v === 'all' ? !since : dateRange === v) ? 'bg-ink text-surface border-ink' : 'border-border text-ink-2 hover:border-ink-3'}`}>{l}</Link>
+                ))}
+              </div>
+            </div>
           </div>
 
           {topErrors.length === 0 ? (
-            <div className="bg-white rounded-lg shadow px-6 py-12 text-center text-gray-400">
-              No errors detected yet. Run{' '}
-              <code className="font-mono">npm run analyze</code> to start.
+            <div className="bg-surface border border-border rounded-xl px-6 py-12 text-center">
+              <div className="text-2xl mb-2">✓</div>
+              <div className="text-sm font-medium text-ink-2">No errors in selected range</div>
+              <div className="text-xs text-ink-3 mt-1">All analyzed calls passed rule checks.</div>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 gap-4">
-
-              {/* Top errors leaderboard */}
-              <div className="bg-white rounded-lg shadow">
-                <div className="px-5 py-3 border-b border-gray-100">
-                  <h3 className="font-semibold text-gray-900">Most Common Errors</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-5">
+              {/* Error leaderboard */}
+              <div className="bg-surface border border-border rounded-xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-border-subtle flex items-center justify-between">
+                  <span className="text-xs font-semibold text-ink-2 uppercase tracking-wide">Error Leaderboard</span>
+                  <div className="flex gap-4 text-[11px] text-ink-3">
+                    <span>Occurrences</span>
+                    <span>Cost/wk</span>
+                  </div>
                 </div>
-                <div className="divide-y divide-gray-50">
-                  {topErrors.slice(0, 8).map((err, i) => (
-                    <div key={err.type} className="px-5 py-3">
-                      <div className="flex items-start gap-3">
-                        <span className="text-sm font-bold text-gray-300 shrink-0 w-5 pt-0.5">
-                          {i + 1}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start gap-2 mb-0.5">
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-semibold text-gray-900 leading-snug">
+                <div className="divide-y divide-border-subtle">
+                  {topErrors.slice(0, 10).map((err, i) => {
+                    const agentName = err.agents[0] ?? '';
+                    const promptText = agentPrompts[agentName] ?? '';
+                    const patches = getApplicablePatches(err.type, promptText);
+                    const weekCost = errorCostMap[err.type] ? (errorCostMap[err.type] / weeksOfData) : 0;
+                    return (
+                      <div key={err.type} className="px-5 py-4">
+                        <div className="flex items-start gap-3">
+                          <span className="text-sm font-bold text-ink-3 w-5 shrink-0 pt-0.5 tabular-nums">{i + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-sm font-medium text-ink leading-snug">
                                 {HUMAN_LABELS[err.type] ?? err.type.replace(/_/g, ' ')}
-                              </div>
-                              <div className="text-xs font-mono text-gray-400 mt-0.5">
-                                {err.type}
-                              </div>
-                            </div>
-                            <div className="shrink-0 text-right">
-                              <div className="text-lg font-bold text-gray-700">{err.count}</div>
+                              </span>
                               {err.critical_count > 0 && (
-                                <span className="px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded-full whitespace-nowrap">
+                                <span className="px-1.5 py-0.5 text-[11px] font-medium bg-crit-bg text-crit border border-crit-border rounded-md whitespace-nowrap">
                                   {err.critical_count} critical
                                 </span>
                               )}
                             </div>
-                          </div>
-                          {/* Structured Find → Replace fix */}
-                          {(() => {
-                            // Use first affected agent's current prompt for staleness check
-                            const agentName = err.agents[0] ?? '';
-                            const promptText = agentPrompts[agentName] ?? '';
-                            const patches = getApplicablePatches(err.type, promptText);
-                            if (patches.length === 0) return null;
-                            return (
+                            <div className="text-xs font-mono text-ink-3 mb-2">{err.type}</div>
+
+                            {patches.length > 0 && (
                               <FixBlock
                                 patches={patches.map((p) => ({
                                   label: p.patch.label,
@@ -631,85 +409,26 @@ export default async function Dashboard({
                                   alreadyFixed: p.alreadyFixed,
                                 }))}
                               />
-                            );
-                          })()}
-                          <div className="flex items-center justify-between mt-1">
-                            <div className="flex items-center gap-3">
-                              <span className="text-xs text-gray-400">
+                            )}
+
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-xs text-ink-3">
                                 {err.agents.slice(0, 3).join(' · ')}
                                 {err.agents.length > 3 && ` +${err.agents.length - 3}`}
                               </span>
-                              {errorCostMap[err.type] && (
-                                <span className="text-xs text-amber-600 font-medium">
-                                  ${(errorCostMap[err.type] / weeksOfData).toFixed(2)}/wk
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <LogFixButton agentName={err.agents[0] ?? ''} errorType={err.type} />
-                              <Link
-                                href={`/calls/${err.example_call}`}
-                                className="text-xs text-blue-500 hover:underline"
-                              >
-                                see example →
-                              </Link>
+                              <div className="flex items-center gap-3">
+                                <Link href={`/calls/${err.example_call}`} className="text-xs text-accent hover:underline">
+                                  example →
+                                </Link>
+                                <LogFixButton agentName={agentName} errorType={err.type} />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Worst calls */}
-              <div className="bg-white rounded-lg shadow">
-                <div className="px-5 py-3 border-b border-gray-100">
-                  <h3 className="font-semibold text-gray-900">Most Problematic Calls</h3>
-                </div>
-                <div className="divide-y divide-gray-50">
-                  {worstCalls.map((call) => {
-                    const analysis = call.call_errors as ErrorAnalysis | null;
-                    return (
-                      <div key={call.call_id} className="px-5 py-3 flex items-start justify-between hover:bg-gray-50 transition-colors">
-                        <Link href={`/calls/${call.call_id}`} className="flex-1 min-w-0 pr-3">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-sm font-medium text-gray-900">
-                              {call.client_name}
-                            </span>
-                            {(call.critical_error_count ?? 0) > 0 && (
-                              <span className="px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded-full">
-                                {call.critical_error_count} critical
-                              </span>
+                          <div className="shrink-0 text-right w-24 pt-0.5">
+                            <div className="text-xl font-bold text-ink tabular-nums">{err.count}</div>
+                            {weekCost > 0 && (
+                              <div className="text-xs text-warn font-medium">${weekCost.toFixed(2)}/wk</div>
                             )}
-                          </div>
-                          <div className="text-xs text-gray-400 font-mono">
-                            {call.call_id.substring(0, 20)}…
-                          </div>
-                          {analysis?.summary && (
-                            <div className="text-xs text-gray-500 mt-0.5 line-clamp-2">
-                              {analysis.summary}
-                            </div>
-                          )}
-                          {/* FP buttons per error */}
-                          {analysis?.errors && analysis.errors.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1.5">
-                              {analysis.errors.map((e) => (
-                                <FalsePositiveButton
-                                  key={e.type}
-                                  callId={call.call_id as string}
-                                  errorType={e.type}
-                                  isFP={fpSet.has(`${call.call_id}::${e.type}`)}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </Link>
-                        <div className="text-right shrink-0">
-                          <div className="text-xl font-bold text-orange-600">{call.error_count}</div>
-                          <div className="text-xs text-gray-400">errors</div>
-                          <div className="text-xs text-gray-400">
-                            {new Date(call.created_at).toLocaleDateString()}
                           </div>
                         </div>
                       </div>
@@ -717,117 +436,208 @@ export default async function Dashboard({
                   })}
                 </div>
               </div>
+
+              {/* Worst calls */}
+              <div className="bg-surface border border-border rounded-xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-border-subtle">
+                  <span className="text-xs font-semibold text-ink-2 uppercase tracking-wide">Most Problematic Calls</span>
+                </div>
+                <div className="divide-y divide-border-subtle">
+                  {worstCalls.map((call) => {
+                    const analysis = call.call_errors as ErrorAnalysis | null;
+                    return (
+                      <div key={call.call_id} className="px-5 py-3.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <Link href={`/calls/${call.call_id}`} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-sm font-medium text-ink truncate">{call.client_name}</span>
+                              {(call.critical_error_count ?? 0) > 0 && (
+                                <span className="px-1.5 py-0.5 text-[11px] bg-crit-bg text-crit border border-crit-border rounded-md whitespace-nowrap shrink-0">
+                                  {call.critical_error_count}c
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] font-mono text-ink-3 mb-1">{call.call_id.substring(0, 20)}…</div>
+                            {analysis?.summary && (
+                              <div className="text-xs text-ink-2 line-clamp-2">{analysis.summary}</div>
+                            )}
+                          </Link>
+                          <div className="shrink-0 text-right">
+                            <div className="text-lg font-bold text-warn tabular-nums">{call.error_count}</div>
+                            <div className="text-[11px] text-ink-3">errors</div>
+                          </div>
+                        </div>
+                        {analysis?.errors && analysis.errors.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {analysis.errors.map((e) => (
+                              <FalsePositiveButton
+                                key={e.type}
+                                callId={call.call_id as string}
+                                errorType={e.type}
+                                isFP={fpSet.has(`${call.call_id}::${e.type}`)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
-        </div>
+        </section>
 
-        {/* ── SECTION 3: ALL CALLS ── */}
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-4">All Calls</h2>
+        {/* ── TREND CHART ─────────────────────────────────────────────────────── */}
+        {trendData.length > 0 && (
+          <section className="mb-10">
+            <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Error Rate Trend</div>
+            <div className="bg-surface border border-border rounded-xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-ink">Weekly error rate per agent</h2>
+                <span className="text-xs text-ink-3">Last 12 weeks</span>
+              </div>
+              <TrendChart data={trendData} agents={trendAgents} />
+            </div>
+          </section>
+        )}
 
-          {/* Client filter pills */}
-          <div className="flex flex-wrap gap-2 mb-3">
-            <Link
-              href={buildUrl({ client: '', page: '1' })}
-              className={`px-3 py-1 text-sm rounded-full border transition-colors ${
-                !clientFilter
-                  ? 'bg-gray-900 text-white border-gray-900'
-                  : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
-              }`}
-            >
-              All ({totalCalls})
-            </Link>
-            {clients.map(([name, count]) => (
-              <Link
-                key={name}
-                href={buildUrl({ client: name, page: '1' })}
-                className={`px-3 py-1 text-sm rounded-full border transition-colors ${
-                  clientFilter === name
-                    ? 'bg-gray-900 text-white border-gray-900'
-                    : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
-                }`}
-              >
-                {name} ({count})
+        {/* ── BEFORE / AFTER ───────────────────────────────────────────────────── */}
+        {compareDate ? (
+          <section className="mb-10 bg-surface border border-border rounded-xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-border-subtle flex items-center justify-between">
+              <div>
+                <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-0.5">Before / After Comparison</div>
+                <span className="text-sm font-medium text-ink">Fix applied: {compareDate}</span>
+              </div>
+              <Link href="/" className="text-xs text-ink-3 hover:text-ink transition-colors">Clear ✕</Link>
+            </div>
+            {comparisonData.length === 0 ? (
+              <div className="px-5 py-8 text-center text-sm text-ink-3">No analyzed calls found around that date.</div>
+            ) : (
+              <div className="divide-y divide-border-subtle">
+                {comparisonData.map(d => {
+                  const improved = d.delta < 0;
+                  const worsened = d.delta > 0;
+                  const pct = d.before > 0 ? Math.round(((d.after - d.before) / d.before) * 100) : d.after > 0 ? 100 : 0;
+                  return (
+                    <div key={d.type} className="px-5 py-3 flex items-center gap-4">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-mono text-ink">{d.type}</span>
+                        {HUMAN_LABELS[d.type] && <span className="text-xs text-ink-3 ml-2">{HUMAN_LABELS[d.type]}</span>}
+                      </div>
+                      <div className="flex items-center gap-6 text-sm shrink-0">
+                        <span className="text-ink-3 w-20 text-right">Before: <strong className="text-ink">{d.before}</strong></span>
+                        <span className="text-ink-3 w-20 text-right">After: <strong className="text-ink">{d.after}</strong></span>
+                        <span className={`w-16 text-right font-semibold ${improved ? 'text-ok' : worsened ? 'text-crit' : 'text-ink-3'}`}>
+                          {improved ? '▼' : worsened ? '▲' : '—'} {Math.abs(pct)}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        ) : (
+          <div className="mb-8 text-xs text-ink-3">
+            Add <code className="font-mono bg-surface-2 px-1.5 py-0.5 rounded border border-border text-ink-2">?compare=YYYY-MM-DD</code> to compare error rates before and after a prompt fix.
+          </div>
+        )}
+
+        {/* ── ALL CALLS ────────────────────────────────────────────────────────── */}
+        <section>
+          <div className="flex items-end justify-between gap-4 mb-4">
+            <div>
+              <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Call Log</div>
+              <h2 className="text-xl font-bold text-ink leading-none">
+                {clientFilter || 'All'} Calls
+                <span className="text-ink-3 font-normal text-base ml-2">{filteredTotal?.toLocaleString()}</span>
+              </h2>
+            </div>
+            {/* Client filters */}
+            <div className="flex flex-wrap gap-1 justify-end">
+              <Link href={buildUrl({ client: '', page: '1' })} className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${!clientFilter ? 'bg-ink text-surface border-ink' : 'border-border text-ink-2 hover:border-ink-3'}`}>
+                All ({totalCalls})
               </Link>
-            ))}
+              {clients.slice(0, 6).map(([name, count]) => (
+                <Link key={name} href={buildUrl({ client: name, page: '1' })} className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${clientFilter === name ? 'bg-ink text-surface border-ink' : 'border-border text-ink-2 hover:border-ink-3'}`}>
+                  {name} ({count})
+                </Link>
+              ))}
+            </div>
           </div>
 
-          {/* Call list */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">
-                {clientFilter || 'All'} Calls
-              </h3>
-              <span className="text-sm text-gray-400">
-                {filteredTotal?.toLocaleString()} total · page {page} of {totalPages || 1}
-              </span>
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
+            {/* Table header */}
+            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] px-5 py-2.5 border-b border-border-subtle">
+              {['Agent / ID', 'Status', 'Duration', 'Errors', 'Date'].map(h => (
+                <span key={h} className="text-[11px] font-semibold text-ink-3 uppercase tracking-wider">{h}</span>
+              ))}
             </div>
-            <div className="divide-y divide-gray-100">
+
+            <div className="divide-y divide-border-subtle">
               {calls?.length === 0 && (
-                <div className="px-6 py-12 text-center text-gray-400">
-                  No calls found. Run <code className="font-mono">npm run sync</code> to fetch data.
+                <div className="px-5 py-12 text-center">
+                  <div className="text-sm text-ink-2 font-medium mb-1">No calls yet</div>
+                  <div className="text-xs text-ink-3">Run <code className="font-mono bg-surface-2 px-1 rounded">npm run sync</code> to fetch from Ultravox.</div>
                 </div>
               )}
               {calls?.map((call) => {
                 const isUnjoined = call.ended_reason === 'unjoined';
                 const isError = call.ended_reason?.includes('error');
-                const badgeClass = isUnjoined
-                  ? 'bg-gray-100 text-gray-500'
-                  : isError
-                    ? 'bg-red-100 text-red-800'
-                    : call.status === 'active'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-green-100 text-green-800';
                 const dur = call.duration_seconds || 0;
                 const hasErrors = (call.error_count ?? 0) > 0;
                 const hasCritical = (call.critical_error_count ?? 0) > 0;
-                const noTranscript = isUnjoined || dur < 5; // unjoined or <5s = no real transcript
+                const noTranscript = isUnjoined || dur < 5;
+
                 return (
                   <Link
                     key={call.call_id}
                     href={`/calls/${call.call_id}`}
-                    className="px-6 py-3 hover:bg-gray-50 transition-colors flex items-center justify-between"
+                    className="grid grid-cols-[1fr_auto_auto_auto_auto] px-5 py-3 hover:bg-surface-2 transition-colors items-center gap-4"
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${badgeClass}`}>
-                          {call.status}
-                        </span>
-                        <span className="text-sm font-medium text-gray-900 truncate">
-                          {call.client_name}
-                        </span>
-                        {hasCritical && (
-                          <span className="px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded-full">
-                            {call.critical_error_count} critical
-                          </span>
-                        )}
-                        {hasErrors && !hasCritical && (
-                          <span className="px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
-                            {call.error_count} errors
-                          </span>
-                        )}
-                        {noTranscript && !hasErrors && call.analysis_status === 'pending' && (
-                          <span className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-400 rounded-full">
-                            no transcript
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-400 font-mono truncate">{call.call_id}</div>
-                      {call.ended_reason && (
-                        <div className="mt-0.5 text-xs text-gray-500">
-                          Ended: {call.ended_reason}
-                        </div>
+                    {/* Agent + ID */}
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-ink truncate">{call.client_name}</div>
+                      <div className="text-[11px] font-mono text-ink-3 truncate">{call.call_id}</div>
+                    </div>
+
+                    {/* Status */}
+                    <div>
+                      <span className={`inline-block px-2 py-0.5 text-[11px] font-medium rounded-md border ${
+                        isUnjoined ? 'bg-surface-2 text-ink-3 border-border'
+                          : isError ? 'bg-crit-bg text-crit border-crit-border'
+                          : call.status === 'active' ? 'bg-accent-bg text-accent border-accent-border'
+                          : 'bg-ok-bg text-ok border-ok-border'
+                      }`}>
+                        {call.status}
+                      </span>
+                    </div>
+
+                    {/* Duration */}
+                    <div className="text-xs text-ink-2 tabular-nums whitespace-nowrap">
+                      {Math.floor(dur / 60)}:{String(dur % 60).padStart(2, '0')}
+                    </div>
+
+                    {/* Errors */}
+                    <div className="text-right">
+                      {hasCritical ? (
+                        <span className="text-xs font-semibold text-crit tabular-nums">{call.critical_error_count}c / {call.error_count}</span>
+                      ) : hasErrors ? (
+                        <span className="text-xs font-medium text-warn tabular-nums">{call.error_count}</span>
+                      ) : noTranscript && call.analysis_status === 'pending' ? (
+                        <span className="text-[11px] text-ink-3">—</span>
+                      ) : call.analysis_status === 'complete' ? (
+                        <span className="text-xs text-ok">✓</span>
+                      ) : (
+                        <span className="text-[11px] text-ink-3">{call.analysis_status ?? '—'}</span>
                       )}
                     </div>
-                    <div className="text-right text-sm text-gray-500 shrink-0 ml-4">
-                      <div className="font-medium text-gray-700">
-                        {Math.floor(dur / 60)}m {dur % 60}s
-                      </div>
-                      <div className="text-xs">${(call.cost_usd || 0).toFixed(3)}</div>
-                      <div className="text-xs mt-0.5 text-gray-400">
-                        {new Date(call.created_at).toLocaleDateString()}{' '}
-                        {new Date(call.created_at).toLocaleTimeString()}
-                      </div>
+
+                    {/* Date */}
+                    <div className="text-xs text-ink-3 whitespace-nowrap">
+                      {new Date(call.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                     </div>
                   </Link>
                 );
@@ -836,60 +646,22 @@ export default async function Dashboard({
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <Link
-                  href={buildUrl({ page: String(Math.max(1, page - 1)) })}
-                  className={`px-4 py-2 text-sm rounded-md border ${
-                    page <= 1
-                      ? 'text-gray-300 border-gray-200 pointer-events-none'
-                      : 'text-gray-700 border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  ← Previous
-                </Link>
-                <div className="flex gap-1">
-                  {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                    let p: number;
-                    if (totalPages <= 7) {
-                      p = i + 1;
-                    } else if (page <= 4) {
-                      p = i + 1;
-                    } else if (page >= totalPages - 3) {
-                      p = totalPages - 6 + i;
-                    } else {
-                      p = page - 3 + i;
-                    }
-                    return (
-                      <Link
-                        key={p}
-                        href={buildUrl({ page: String(p) })}
-                        className={`w-8 h-8 flex items-center justify-center text-sm rounded-md ${
-                          p === page
-                            ? 'bg-gray-900 text-white'
-                            : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        {p}
-                      </Link>
-                    );
-                  })}
+              <div className="px-5 py-3 border-t border-border-subtle flex items-center justify-between">
+                <span className="text-xs text-ink-3">Page {page} of {totalPages}</span>
+                <div className="flex gap-2">
+                  {page > 1 && (
+                    <Link href={buildUrl({ page: String(page - 1) })} className="px-3 py-1.5 text-xs border border-border rounded-md text-ink-2 hover:border-ink-3 transition-colors">← Prev</Link>
+                  )}
+                  {page < totalPages && (
+                    <Link href={buildUrl({ page: String(page + 1) })} className="px-3 py-1.5 text-xs border border-border rounded-md text-ink-2 hover:border-ink-3 transition-colors">Next →</Link>
+                  )}
                 </div>
-                <Link
-                  href={buildUrl({ page: String(Math.min(totalPages, page + 1)) })}
-                  className={`px-4 py-2 text-sm rounded-md border ${
-                    page >= totalPages
-                      ? 'text-gray-300 border-gray-200 pointer-events-none'
-                      : 'text-gray-700 border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  Next →
-                </Link>
               </div>
             )}
           </div>
-        </div>
+        </section>
 
-      </div>
+      </main>
     </div>
   );
 }

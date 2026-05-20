@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
             call_id: callId,
             role:    m.role,
             text:    m.text,
-            ordinal: m.ordinal,
+            ordinal: (m as never as {ordinal: number})?.ordinal ?? m.callStageMessageIndex ?? 0,
           })),
           { onConflict: 'call_id,ordinal', ignoreDuplicates: true }
         );
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
           callId,
           agentId: call.agentId as string | null ?? null,
           clientName,
-          messages: messages.map((m) => ({ role: m.role, text: m.text, ordinal: m.ordinal })),
+          messages: messages.map((m) => ({ role: m.role, text: m.text, ordinal: (m as never as {ordinal: number})?.ordinal ?? m.callStageMessageIndex ?? 0 })),
           webhookUrl: WEBHOOK_URL,
         });
 
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
         .from('ultravox_calls')
         .update({ analysis_status: 'error' })
         .eq('call_id', callId)
-        .catch(() => null);
+        .then(() => null, () => null);
     }
   });
 
