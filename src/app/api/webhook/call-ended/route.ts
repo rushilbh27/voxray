@@ -88,9 +88,10 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // 3. Resolve client_name from agent ID
+      // 3. Resolve client_name — use agent.name from payload as fallback (auto-detects new agents)
       const { getClientName } = await import('@/lib/ultravox');
-      const clientName = getClientName(call.agentId as string | null, null, null);
+      const agentNameFromPayload = (call.agent as Record<string, string> | null)?.name ?? null;
+      const clientName = getClientName(call.agentId as string | null, agentNameFromPayload, null);
       await supabaseAdmin
         .from('ultravox_calls')
         .update({ client_name: clientName })

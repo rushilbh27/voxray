@@ -7,6 +7,9 @@ import { fetchAgentPrompts } from '@/lib/ultravox';
 import { getApplicablePatches } from '@/lib/fix-specs';
 import { FixBlock } from '@/app/components/FixBlock';
 import { TrendChart } from '@/app/components/TrendChart';
+import { LogFixButton } from '@/app/components/LogFixButton';
+import { AckAlertButton } from '@/app/components/AckAlertButton';
+import { FalsePositiveButton } from '@/app/components/FalsePositiveButton';
 
 export const revalidate = 60;
 
@@ -222,6 +225,35 @@ export default async function Dashboard({
     .sort((a, b) => (b.critical_error_count ?? 0) - (a.critical_error_count ?? 0))
     .slice(0, 8);
 
+  // Cost per error type — sum cost_usd of calls containing each error type
+  const { data: costRows } = await supabaseAdmin
+    .from('ultravox_calls')
+    .select('call_errors, cost_usd, created_at')
+    .eq('analysis_status', 'complete')
+    .gt('error_count', 0)
+    .range(0, 9999);
+
+  const errorCostMap: Record<string, number> = {};
+  const firstCallDate = costRows?.length ? new Date(costRows[costRows.length - 1].created_at as string) : new Date();
+  const weeksOfData = Math.max(1, Math.round((Date.now() - firstCallDate.getTime()) / (7 * 24 * 60 * 60 * 1000)));
+  for (const row of costRows ?? []) {
+    const errs = (row.call_errors as ErrorAnalysis | null)?.errors ?? [];
+    const cost = (row.cost_usd as number) ?? 0;
+    const seen = new Set<string>();
+    for (const e of errs) {
+      if (!seen.has(e.type)) {
+        errorCostMap[e.type] = (errorCostMap[e.type] ?? 0) + cost;
+        seen.add(e.type);
+      }
+    }
+  }
+
+  // False positives — fetch all so we can mark them in UI
+  const { data: fpRows } = await supabaseAdmin
+    .from('false_positives')
+    .select('call_id, error_type');
+  const fpSet = new Set((fpRows ?? []).map((r) => `${r.call_id}::${r.error_type}`));
+
   // Client breakdown — all rows
   const { data: clientBreakdown } = await supabaseAdmin
     .from('ultravox_calls')
@@ -410,9 +442,10 @@ export default async function Dashboard({
                       example: <Link href={`/calls/${alert.example_call_id}`} className="underline hover:text-red-700">{alert.example_call_id.substring(0, 20)}…</Link>
                     </div>
                   </div>
-                  <span className="text-xs text-red-400 shrink-0">
-                    {new Date(alert.fired_at).toLocaleTimeString()}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <AckAlertButton ruleId={alert.rule_id} agent={alert.agent} />
+                    <span className="text-xs text-red-400">{new Date(alert.fired_at).toLocaleTimeString()}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -601,16 +634,26 @@ export default async function Dashboard({
                             );
                           })()}
                           <div className="flex items-center justify-between mt-1">
-                            <span className="text-xs text-gray-400">
-                              {err.agents.slice(0, 3).join(' · ')}
-                              {err.agents.length > 3 && ` +${err.agents.length - 3}`}
-                            </span>
-                            <Link
-                              href={`/calls/${err.example_call}`}
-                              className="text-xs text-blue-500 hover:underline"
-                            >
-                              see example →
-                            </Link>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-gray-400">
+                                {err.agents.slice(0, 3).join(' · ')}
+                                {err.agents.length > 3 && ` +${err.agents.length - 3}`}
+                              </span>
+                              {errorCostMap[err.type] && (
+                                <span className="text-xs text-amber-600 font-medium">
+                                  ${(errorCostMap[err.type] / weeksOfData).toFixed(2)}/wk
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <LogFixButton agentName={err.agents[0] ?? ''} errorType={err.type} />
+                              <Link
+                                href={`/calls/${err.example_call}`}
+                                className="text-xs text-blue-500 hover:underline"
+                              >
+                                see example →
+                              </Link>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -628,12 +671,8 @@ export default async function Dashboard({
                   {worstCalls.map((call) => {
                     const analysis = call.call_errors as ErrorAnalysis | null;
                     return (
-                      <Link
-                        key={call.call_id}
-                        href={`/calls/${call.call_id}`}
-                        className="px-5 py-3 flex items-start justify-between hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex-1 min-w-0 pr-3">
+                      <div key={call.call_id} className="px-5 py-3 flex items-start justify-between hover:bg-gray-50 transition-colors">
+                        <Link href={`/calls/${call.call_id}`} className="flex-1 min-w-0 pr-3">
                           <div className="flex items-center gap-2 mb-0.5">
                             <span className="text-sm font-medium text-gray-900">
                               {call.client_name}
@@ -652,7 +691,20 @@ export default async function Dashboard({
                               {analysis.summary}
                             </div>
                           )}
-                        </div>
+                          {/* FP buttons per error */}
+                          {analysis?.errors && analysis.errors.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {analysis.errors.map((e) => (
+                                <FalsePositiveButton
+                                  key={e.type}
+                                  callId={call.call_id as string}
+                                  errorType={e.type}
+                                  isFP={fpSet.has(`${call.call_id}::${e.type}`)}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </Link>
                         <div className="text-right shrink-0">
                           <div className="text-xl font-bold text-orange-600">{call.error_count}</div>
                           <div className="text-xs text-gray-400">errors</div>
@@ -660,7 +712,7 @@ export default async function Dashboard({
                             {new Date(call.created_at).toLocaleDateString()}
                           </div>
                         </div>
-                      </Link>
+                      </div>
                     );
                   })}
                 </div>

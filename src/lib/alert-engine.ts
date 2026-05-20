@@ -229,13 +229,21 @@ export async function runAlertCheck(): Promise<FiredAlert[]> {
     return true;
   });
 
-  if (deduped.length > 0) {
-    // Send Telegram + webhook in parallel
+  // Filter out acknowledged alerts
+  const { data: activeAcks } = await supabaseAdmin
+    .from('alert_acks')
+    .select('rule_id, agent')
+    .gt('ack_until', new Date().toISOString());
+
+  const ackedKeys = new Set((activeAcks ?? []).map((a) => `${a.rule_id}::${a.agent}`));
+  const unacked = deduped.filter((a) => !ackedKeys.has(`${a.rule_id}::${a.agent}`));
+
+  if (unacked.length > 0) {
     await Promise.allSettled([
-      sendTelegram(formatTelegramMessage(deduped)),
-      ...deduped.map(sendWebhook),
+      sendTelegram(formatTelegramMessage(unacked)),
+      ...unacked.map(sendWebhook),
     ]);
   }
 
-  return deduped;
+  return deduped; // return all fired (including acked) so dashboard shows full state
 }
