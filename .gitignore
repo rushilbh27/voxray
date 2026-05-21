@@ -26,6 +26,7 @@
 
 # internal docs — not for public repo
 HANDOFF.md
+AGENT_PROFILE_REDESIGN.md
 CLAUDE.md
 AGENTS.md
 CLAUDE_CODE_PROMPT.md
