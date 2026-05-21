@@ -83,7 +83,7 @@ export function ApplyFixButton({ agentId, agentName, errorType, description }: P
       disabled={state === 'applying'}
       className="inline-flex items-center gap-1 text-xs px-2.5 py-1 border border-accent-border text-accent bg-accent-bg hover:bg-accent rounded-md font-medium transition-colors disabled:opacity-50 hover:text-white"
     >
-      {state === 'applying' ? '⏳ Applying…' : '⚡ Apply fix'}
+      {state === 'applying' ? '⏳ Applying…' : `⚡ Fix ${agentName} only`}
     </button>
   );
 }
