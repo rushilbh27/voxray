@@ -155,9 +155,16 @@ export default async function Dashboard({
       ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
       : null;
 
-  const agentPrompts = await fetchAgentPrompts();
+  // ── Build the paginated call-log query (filter-dependent) ─────────────────
+  let callLogQuery = supabaseAdmin
+    .from('ultravox_calls')
+    .select('call_id, client_name, status, ended_reason, duration_seconds, error_count, critical_error_count, analysis_status, created_at', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + PAGE_SIZE - 1);
+  if (clientFilter) callLogQuery = callLogQuery.eq('client_name', clientFilter);
+  if (statusFilter) callLogQuery = callLogQuery.eq('status', statusFilter);
 
-  // ── Single parallel fetch — all RPCs + direct queries ──────────────────────
+  // ── Single parallel fetch — everything at once ────────────────────────────
   const [
     { data: aggRows },
     { data: errorFreqRows },
@@ -168,6 +175,9 @@ export default async function Dashboard({
     { data: pipelineRows },
     { data: evalRows },
     { data: velocityRows },
+    agentPrompts,
+    activeAlerts,
+    { data: calls, count: filteredTotal },
   ] = await Promise.all([
     supabaseAdmin.rpc('get_dashboard_aggregates'),
     supabaseAdmin.rpc('get_error_frequency', {
@@ -187,6 +197,9 @@ export default async function Dashboard({
     supabaseAdmin.rpc('get_pipeline_stats'),
     supabaseAdmin.rpc('get_eval_stats'),
     supabaseAdmin.rpc('get_error_velocity'),
+    fetchAgentPrompts(),
+    import('@/lib/alert-engine').then((m) => m.runAlertCheck()).catch(() => [] as import('@/lib/alert-engine').FiredAlert[]),
+    callLogQuery,
   ]);
 
   // ── Stat strip ──────────────────────────────────────────────────────────────
@@ -282,41 +295,33 @@ export default async function Dashboard({
     ])
   );
 
-  // ── Prompt version trend (only when agent filter active) ─────────────────────
-  let promptVersionData: VersionPoint[] = [];
-  if (errorAgent) {
-    const { data: pvRows } = await supabaseAdmin.rpc('get_prompt_version_trend', { p_agent: errorAgent });
-    promptVersionData = ((pvRows as Array<Record<string, unknown>>) ?? []).map((r) => ({
-      prompt_hash: r.prompt_hash as string,
-      first_used:  r.first_used as string,
-      total:       Number(r.total),
-      with_errors: Number(r.with_errors),
-    }));
-  }
+  // ── Conditional queries (parallel with each other) ───────────────────────────
+  const [pvResult, compResult] = await Promise.all([
+    errorAgent
+      ? supabaseAdmin.rpc('get_prompt_version_trend', { p_agent: errorAgent })
+      : Promise.resolve({ data: null }),
+    compareDate
+      ? supabaseAdmin.rpc('get_comparison_data', { p_date: new Date(compareDate).toISOString() })
+      : Promise.resolve({ data: null }),
+  ]);
 
-  // ── Before / after comparison (conditional — only when ?compare= is set) ───
+  const promptVersionData: VersionPoint[] = ((pvResult.data as Array<Record<string, unknown>>) ?? []).map((r) => ({
+    prompt_hash: r.prompt_hash as string,
+    first_used:  r.first_used as string,
+    total:       Number(r.total),
+    with_errors: Number(r.with_errors),
+  }));
+
   interface ErrorDiff { type: string; before: number; after: number; delta: number; }
-  let comparisonData: ErrorDiff[] = [];
-  if (compareDate) {
-    const { data: compRows } = await supabaseAdmin.rpc('get_comparison_data', {
-      p_date: new Date(compareDate).toISOString(),
-    });
-    comparisonData = ((compRows as Array<Record<string, unknown>>) ?? [])
-      .map((r) => ({
-        type:   r.error_type as string,
-        before: Number(r.before_count),
-        after:  Number(r.after_count),
-        delta:  Number(r.after_count) - Number(r.before_count),
-      }))
-      .sort((a, b) => a.delta - b.delta);
-  }
+  const comparisonData: ErrorDiff[] = ((compResult.data as Array<Record<string, unknown>>) ?? [])
+    .map((r) => ({
+      type:   r.error_type as string,
+      before: Number(r.before_count),
+      after:  Number(r.after_count),
+      delta:  Number(r.after_count) - Number(r.before_count),
+    }))
+    .sort((a, b) => a.delta - b.delta);
 
-  const activeAlerts = await import('@/lib/alert-engine').then((m) => m.runAlertCheck()).catch(() => [] as import('@/lib/alert-engine').FiredAlert[]);
-
-  let query = supabaseAdmin.from('ultravox_calls').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(offset, offset + PAGE_SIZE - 1);
-  if (clientFilter) query = query.eq('client_name', clientFilter);
-  if (statusFilter) query = query.eq('status', statusFilter);
-  const { data: calls, count: filteredTotal } = await query;
   const totalPages = Math.ceil((filteredTotal || 0) / PAGE_SIZE);
 
   function buildUrl(overrides: Record<string, string>) {
