@@ -423,11 +423,11 @@ export default async function Dashboard({
                   limit={30}
                 />
               )}
-              {/* Agent filter */}
+              {/* Agent filter — primary workflow */}
               <div className="flex gap-1">
-                <Link href={buildUrl({ eagent: '', page: '1' })} className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${!errorAgent ? 'bg-ink text-surface border-ink' : 'border-border text-ink-2 hover:border-ink-3'}`}>All</Link>
-                {['Sales AI','Debt Collector','Cold Outreach'].map(a => (
-                  <Link key={a} href={buildUrl({ eagent: a, page: '1' })} className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${errorAgent === a ? 'bg-ink text-surface border-ink' : 'border-border text-ink-2 hover:border-ink-3'}`}>{a.split(' ')[0]}</Link>
+                <Link href={buildUrl({ eagent: '', page: '1' })} className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${!errorAgent ? 'bg-ink text-surface border-ink' : 'border-border text-ink-2 hover:border-ink-3'}`}>All agents</Link>
+                {['Sales AI','Debt Collector','Cold Outreach','NECTOR Demo'].map(a => (
+                  <Link key={a} href={buildUrl({ eagent: a, page: '1' })} className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${errorAgent === a ? 'bg-accent text-white border-accent' : 'border-border text-ink-2 hover:border-ink-3'}`}>{a.replace(' AI','').replace(' Demo','').replace('Debt ','')}</Link>
                 ))}
               </div>
               {/* Date range */}
@@ -456,15 +456,22 @@ export default async function Dashboard({
                     <span>Cost/wk</span>
                   </div>
                 </div>
+                {!errorAgent && (
+                  <div className="px-5 py-4 bg-surface-2 border-b border-border-subtle">
+                    <p className="text-xs text-ink-3">Select an agent above to see fix patches and apply fixes. Each agent has a different prompt.</p>
+                  </div>
+                )}
                 <div className="divide-y divide-border-subtle">
                   {topErrors.slice(0, 10).map((err, i) => {
-                    const agentPatchResults = getAgentPatches(err.type, err.agents, agentPrompts);
-                    // Show patches for the first agent that has applicable (unfixed) patches
-                    const bestMatch = agentPatchResults.find((r) => r.hasApplicablePatches) ?? agentPatchResults[0];
+                    // When agent filter active: check patches for THAT agent only
+                    // When no filter: no patches (force user to pick agent)
+                    const targetAgent = errorAgent || '';
+                    const targetPrompt = agentPrompts[targetAgent] ?? '';
+                    const patches = targetAgent ? getApplicablePatches(err.type, targetPrompt) : [];
+                    const hasApplicable = patches.some((p) => !p.alreadyFixed);
                     const weekCost = err.cost_usd ? (err.cost_usd / weeksOfData) : 0;
-                    // NECTOR Demo: only show apply button if find text actually exists in its prompt
-                    const nectorResult = agentPatchResults.find((r) => r.agentName === 'NECTOR Demo');
-                    const nectorCanApply = nectorResult?.hasApplicablePatches ?? false;
+                    // Apply button: only when agent filter is active AND find text exists in that agent's prompt
+                    const canApply = errorAgent && AGENT_IDS[errorAgent] === '428d7591-3ba5-4b60-8aa5-a92012d12451' && hasApplicable;
                     return (
                       <div key={err.type} className="px-5 py-4">
                         <div className="flex items-start gap-3">
@@ -488,17 +495,18 @@ export default async function Dashboard({
                             </div>
                             <div className="text-xs font-mono text-ink-3 mb-2">{err.type}</div>
 
-                            {bestMatch && bestMatch.patches.length > 0 && (
+                            {/* Per-agent patches — only when agent filter active */}
+                            {errorAgent && patches.length > 0 && (
                               <div>
                                 <div className="text-[11px] text-ink-3 mb-1">
-                                  Patch for <span className="font-semibold text-ink-2">{bestMatch.agentName}</span>
-                                  {bestMatch.hasApplicablePatches
+                                  Patch for <span className="font-semibold text-ink-2">{errorAgent}</span>
+                                  {hasApplicable
                                     ? <span className="text-ok ml-1">· find text verified ✓</span>
                                     : <span className="text-warn ml-1">· all patches already applied</span>
                                   }
                                 </div>
                                 <FixBlock
-                                  patches={bestMatch.patches.map((p) => ({
+                                  patches={patches.map((p) => ({
                                     label: p.patch.label,
                                     find: p.patch.find,
                                     replace: p.patch.replace,
@@ -508,28 +516,33 @@ export default async function Dashboard({
                               </div>
                             )}
 
-                            {!bestMatch && FIX_SUGGESTIONS[err.type] && (
+                            {/* No patches found for this agent — show text suggestion */}
+                            {errorAgent && patches.length === 0 && FIX_SUGGESTIONS[err.type] && (
                               <details className="mt-1 text-xs">
                                 <summary className="text-ink-3 cursor-pointer hover:text-ink-2">
-                                  Fix suggestion (no matching agent prompt)
+                                  No patch for {errorAgent} — view suggestion
                                 </summary>
                                 <p className="mt-1 text-ink-2 leading-relaxed whitespace-pre-wrap max-h-32 overflow-y-auto">
-                                  {FIX_SUGGESTIONS[err.type].slice(0, 300)}…
+                                  {FIX_SUGGESTIONS[err.type].slice(0, 400)}…
                                 </p>
                               </details>
                             )}
 
                             <div className="flex items-center justify-between mt-2">
-                              <span className="text-xs text-ink-3">
-                                {err.agents.slice(0, 3).join(' · ')}
-                                {err.agents.length > 3 && ` +${err.agents.length - 3}`}
-                              </span>
+                              {!errorAgent ? (
+                                <span className="text-xs text-ink-3">
+                                  {err.agents.slice(0, 3).join(' · ')}
+                                  {err.agents.length > 3 && ` +${err.agents.length - 3}`}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-ink-2 font-medium">{errorAgent}</span>
+                              )}
                               <div className="flex items-center gap-3 flex-wrap">
                                 <Link href={`/calls/${err.example_call}`} className="text-xs text-accent hover:underline">
                                   example →
                                 </Link>
-                                <LogFixButton agentName={bestMatch?.agentName ?? err.agents[0] ?? ''} errorType={err.type} />
-                                {nectorCanApply && (
+                                <LogFixButton agentName={errorAgent || err.agents[0] || ''} errorType={err.type} />
+                                {canApply && (
                                   <ApplyFixButton
                                     agentId="428d7591-3ba5-4b60-8aa5-a92012d12451"
                                     agentName="NECTOR Demo"
