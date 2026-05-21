@@ -13,6 +13,15 @@ import { FalsePositiveButton } from '@/app/components/FalsePositiveButton';
 import { Nav } from '@/app/components/Nav';
 import { PipelineStrip } from '@/app/components/PipelineStrip';
 import { EvalBadge } from '@/app/components/EvalBadge';
+import { ApplyFixButton } from '@/app/components/ApplyFixButton';
+
+// Agent name → Ultravox UUID (apply-fix allowlist checks UUID server-side)
+const AGENT_IDS: Record<string, string> = {
+  'NECTOR Demo':      '428d7591-3ba5-4b60-8aa5-a92012d12451',
+  'Sales AI':         '65ae3d7d-5a1f-4880-89f4-1ce690efae89',
+  'Debt Collector':   '52db715f-fc68-4265-a354-7f64a27cd3b9',
+  'Cold Outreach':    '74c435db-0382-45d4-8f84-65343c0dde5f',
+};
 import { PromptVersionChart } from '@/app/components/PromptVersionChart';
 import type { VersionPoint } from '@/app/components/PromptVersionChart';
 
@@ -464,11 +473,19 @@ export default async function Dashboard({
                                 {err.agents.slice(0, 3).join(' · ')}
                                 {err.agents.length > 3 && ` +${err.agents.length - 3}`}
                               </span>
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-3 flex-wrap">
                                 <Link href={`/calls/${err.example_call}`} className="text-xs text-accent hover:underline">
                                   example →
                                 </Link>
                                 <LogFixButton agentName={agentName} errorType={err.type} />
+                                {err.agents.some(a => AGENT_IDS[a] === '428d7591-3ba5-4b60-8aa5-a92012d12451') && (
+                                  <ApplyFixButton
+                                    agentId="428d7591-3ba5-4b60-8aa5-a92012d12451"
+                                    agentName="NECTOR Demo"
+                                    errorType={err.type}
+                                    description={`Dashboard apply: ${err.type}`}
+                                  />
+                                )}
                               </div>
                             </div>
                           </div>
