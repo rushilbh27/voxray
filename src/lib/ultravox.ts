@@ -172,6 +172,38 @@ export async function fetchAgentPrompts(): Promise<Record<string, string>> {
   return Object.fromEntries(results);
 }
 
+export interface AgentPromptInfo {
+  prompt: string;
+  agentId: string;
+  agentName: string;
+}
+
+export async function fetchAllAgentPrompts(): Promise<Record<string, AgentPromptInfo>> {
+  const { supabaseAdmin } = await import('@/lib/supabase');
+  const { data: rows } = await supabaseAdmin
+    .from('ultravox_calls')
+    .select('agent_id, client_name')
+    .not('agent_id', 'is', null)
+    .limit(2000);
+
+  const agentMap = new Map<string, string>();
+  for (const row of rows ?? []) {
+    if (row.agent_id && row.client_name && !agentMap.has(row.agent_id)) {
+      agentMap.set(row.agent_id, row.client_name);
+    }
+  }
+
+  const results = await Promise.all(
+    [...agentMap.entries()].map(async ([agentId, clientName]) => {
+      const agent = await fetchAgent(agentId);
+      const prompt = agent?.systemPrompt ?? '';
+      return [clientName, { prompt, agentId, agentName: clientName }] as [string, AgentPromptInfo];
+    })
+  );
+
+  return Object.fromEntries(results);
+}
+
 export function calcCostUsd(durationSeconds: number): number {
   return (durationSeconds / 60) * 0.05;
 }

@@ -17,7 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { FIX_SPECS } from '@/lib/fix-specs';
+import { FIX_SPECS, verifyPatch } from '@/lib/fix-specs';
 
 const ULTRAVOX_API = 'https://api.ultravox.ai/api';
 
@@ -73,17 +73,35 @@ export async function POST(
   const agent = await getRes.json();
   const currentPrompt: string = agent.callTemplate?.systemPrompt ?? '';
 
+  // ── Pre-flight: verify at least one patch find-text exists ─────────────────
+  const verifications = spec.patches.map((patch) => ({
+    patch,
+    ...verifyPatch(patch, currentPrompt),
+  }));
+  const anyExists = verifications.some((v) => v.exists);
+
+  if (!anyExists) {
+    return NextResponse.json({
+      error: `No patch find-text found in ${agentName} prompt. These patches may be designed for a different agent.`,
+      patches: verifications.map((v) => ({
+        label: v.patch.label,
+        exists: v.exists,
+        lineNumber: v.lineNumber,
+      })),
+    }, { status: 409 });
+  }
+
   // ── Apply all patches for this error type ─────────────────────────────────
   let newPrompt = currentPrompt;
   const applied: string[] = [];
   const skipped: string[] = [];
 
-  for (const patch of spec.patches) {
-    if (newPrompt.includes(patch.find)) {
-      newPrompt = newPrompt.replace(patch.find, patch.replace);
-      applied.push(patch.label);
+  for (const v of verifications) {
+    if (v.exists && newPrompt.includes(v.patch.find)) {
+      newPrompt = newPrompt.replace(v.patch.find, v.patch.replace);
+      applied.push(v.patch.label);
     } else {
-      skipped.push(patch.label);
+      skipped.push(v.patch.label);
     }
   }
 

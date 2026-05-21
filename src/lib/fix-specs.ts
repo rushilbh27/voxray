@@ -403,6 +403,31 @@ Before stating any fact (price, size, date, availability, feature):
 
 };
 
+export interface PatchVerification {
+  exists: boolean;
+  lineNumber: number;
+  contextBefore: string;
+  contextAfter: string;
+}
+
+export function verifyPatch(patch: FixPatch, prompt: string): PatchVerification {
+  const idx = prompt.indexOf(patch.find);
+  if (idx === -1) return { exists: false, lineNumber: 0, contextBefore: '', contextAfter: '' };
+
+  const before = prompt.substring(0, idx);
+  const after = prompt.substring(idx + patch.find.length);
+  const lineNumber = before.split('\n').length;
+  const beforeLines = before.split('\n');
+  const afterLines = after.split('\n');
+
+  return {
+    exists: true,
+    lineNumber,
+    contextBefore: beforeLines.slice(-3).join('\n'),
+    contextAfter: afterLines.slice(0, 3).join('\n'),
+  };
+}
+
 /**
  * Given an error type and the current agent system prompt text,
  * returns patches filtered to only those whose `find` text still exists in the prompt.
@@ -411,14 +436,18 @@ Before stating any fact (price, size, date, availability, feature):
 export function getApplicablePatches(
   errorType: string,
   promptText: string
-): { patch: FixPatch; alreadyFixed: boolean }[] {
+): { patch: FixPatch; alreadyFixed: boolean; verification: PatchVerification }[] {
   const spec = FIX_SPECS[errorType];
   if (!spec) return [];
 
-  return spec.patches.map((patch) => ({
-    patch,
-    alreadyFixed: promptText.length > 0 && !promptText.includes(patch.find),
-  }));
+  return spec.patches.map((patch) => {
+    const verification = verifyPatch(patch, promptText);
+    return {
+      patch,
+      alreadyFixed: promptText.length > 0 && !verification.exists,
+      verification,
+    };
+  });
 }
 
 /**
@@ -444,10 +473,13 @@ export function getAgentPatches(
     .filter((a) => agentPrompts[a] && agentPrompts[a].length > 0)
     .map((agentName) => {
       const promptText = agentPrompts[agentName];
-      const patches = spec.patches.map((patch) => ({
-        patch,
-        alreadyFixed: !promptText.includes(patch.find),
-      }));
+      const patches = spec.patches.map((patch) => {
+        const verification = verifyPatch(patch, promptText);
+        return {
+          patch,
+          alreadyFixed: !verification.exists,
+        };
+      });
       const hasApplicablePatches = patches.some((p) => !p.alreadyFixed);
       return { agentName, patches, hasApplicablePatches };
     })
