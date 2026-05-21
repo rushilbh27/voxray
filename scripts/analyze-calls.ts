@@ -33,7 +33,7 @@ const supabase = createClient(
 const force = process.argv.includes('--force');
 const limitArg = process.argv.findIndex(a => a === '--limit');
 const limit = limitArg !== -1 ? parseInt(process.argv[limitArg + 1]) : 500;
-const CONCURRENCY = 5;
+const CONCURRENCY = 2; // Haiku rate limit: 50k tokens/min — large transcripts need headroom
 const WEBHOOK_URL = `${process.env.VOXRAY_URL ?? 'https://voxray.vercel.app'}/api/webhook/transcript`;
 
 const counters = { done: 0, errors: 0, total: 0 };

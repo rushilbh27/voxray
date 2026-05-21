@@ -210,15 +210,34 @@ export async function analyzeCallErrors(
   const prompt = buildAnalysisPrompt(agentType, transcript);
 
   const t0 = Date.now();
-  let response: Awaited<ReturnType<ReturnType<typeof getClient>['messages']['create']>>;
+  let response: import('@anthropic-ai/sdk/resources/messages').Message | undefined;
 
-  try {
-    response = await getClient().messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }],
-    });
-  } catch (err) {
+  // Retry up to 3 times on 429 rate-limit with exponential backoff
+  const MAX_RETRIES = 3;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      response = await getClient().messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: prompt }],
+      }) as import('@anthropic-ai/sdk/resources/messages').Message;
+      lastErr = undefined;
+      break; // success
+    } catch (err) {
+      lastErr = err;
+      const msg = String(err);
+      const is429 = msg.includes('429') || msg.includes('rate_limit');
+      if (is429 && attempt < MAX_RETRIES) {
+        const waitMs = Math.min(60_000, 5_000 * Math.pow(2, attempt)); // 5s, 10s, 20s
+        await new Promise(r => setTimeout(r, waitMs));
+        continue;
+      }
+      break;
+    }
+  }
+
+  if (lastErr) {
     const { recordLlmTrace } = await import('./llm-trace');
     recordLlmTrace({
       call_id:       opts?.callId,
@@ -227,14 +246,14 @@ export async function analyzeCallErrors(
       agent_type:    agentType,
       latency_ms:    Date.now() - t0,
       success:       false,
-      error_message: String(err),
+      error_message: String(lastErr),
       prompt_hash:   opts?.promptHash,
     });
-    throw err;
+    throw lastErr;
   }
 
   const latencyMs = Date.now() - t0;
-  const { input_tokens, output_tokens } = response.usage;
+  const { input_tokens, output_tokens } = response!.usage;
   const { recordLlmTrace, computeHaikuCost } = await import('./llm-trace');
   recordLlmTrace({
     call_id:       opts?.callId,
@@ -249,7 +268,7 @@ export async function analyzeCallErrors(
     prompt_hash:   opts?.promptHash,
   });
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
+  const text = response!.content[0].type === 'text' ? response!.content[0].text : '';
 
   // Extract JSON from response
   const jsonMatch = text.match(/\{[\s\S]*\}/);
