@@ -219,7 +219,7 @@ export async function analyzeCallErrors(
     try {
       response = await getClient().messages.create({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2048,
+        max_tokens: 4096, // 2048 caused truncation on calls with many errors
         messages: [{ role: 'user', content: prompt }],
       }) as import('@anthropic-ai/sdk/resources/messages').Message;
       lastErr = undefined;
@@ -276,7 +276,24 @@ export async function analyzeCallErrors(
     throw new Error('No JSON in analysis response');
   }
 
-  const analysis = JSON.parse(jsonMatch[0]) as ErrorAnalysis;
+  // Strip control characters that break JSON.parse (common in Haiku agent_line quotes)
+  const cleaned = jsonMatch[0].replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  let analysis: ErrorAnalysis;
+  try {
+    analysis = JSON.parse(cleaned) as ErrorAnalysis;
+  } catch (parseErr) {
+    // Last resort: attempt to recover by truncating to last valid closing brace
+    const lastBrace = cleaned.lastIndexOf('}\n]');
+    if (lastBrace > 0) {
+      try {
+        analysis = JSON.parse(cleaned.slice(0, lastBrace + 3) + '}}') as ErrorAnalysis;
+      } catch {
+        throw new Error(`JSON parse failed: ${String(parseErr)}`);
+      }
+    } else {
+      throw new Error(`JSON parse failed: ${String(parseErr)}`);
+    }
+  }
   analysis.error_count = analysis.errors?.length ?? 0;
   analysis.critical_error_count = analysis.errors?.filter(e => e.severity === 'critical').length ?? 0;
 
