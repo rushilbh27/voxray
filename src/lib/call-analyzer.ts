@@ -15,7 +15,6 @@ import { queueAudioAnalysis } from './audio-analyzer';
 import { analyzeCallErrors, detectAgentType } from './error-analyzer';
 import type { ErrorAnalysis } from './error-analyzer';
 import { fetchAgent } from './ultravox';
-import { supabaseAdmin } from './supabase';
 
 export interface AnalyzeResult {
   analysis: ErrorAnalysis;
@@ -41,13 +40,13 @@ export async function analyzeCall(opts: AnalyzeCallOptions): Promise<AnalyzeResu
     if (agent?.systemPrompt) {
       promptHash = createHash('sha256').update(agent.systemPrompt).digest('hex');
 
-      // Upsert prompt version record — track when each prompt hash was active
-      void supabaseAdmin
-        .from('prompt_versions')
-        .upsert(
+      // Upsert prompt version record — dynamic import avoids top-level env requirement
+      import('./supabase').then(({ supabaseAdmin }) =>
+        supabaseAdmin.from('prompt_versions').upsert(
           { agent_id: agentId, prompt_hash: promptHash, last_seen: new Date().toISOString() },
           { onConflict: 'agent_id,prompt_hash', ignoreDuplicates: false }
-        );
+        )
+      ).catch(() => {});
     }
   }
 

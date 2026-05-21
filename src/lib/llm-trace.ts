@@ -2,8 +2,10 @@
  * Fire-and-forget LLM call tracing.
  * Records latency, tokens, and cost for every Haiku analysis to llm_traces.
  * Never throws to caller — failure to trace must never fail analysis.
+ *
+ * Uses dynamic import for supabaseAdmin so scripts that load this module
+ * before env vars are set (e.g. analyze-calls.ts) don't crash on startup.
  */
-import { supabaseAdmin } from './supabase';
 
 export interface LlmTraceInput {
   call_id?:       string;
@@ -20,9 +22,9 @@ export interface LlmTraceInput {
 }
 
 export function recordLlmTrace(trace: LlmTraceInput): void {
-  void supabaseAdmin
-    .from('llm_traces')
-    .insert(trace);
+  import('./supabase').then(({ supabaseAdmin }) =>
+    supabaseAdmin.from('llm_traces').insert(trace)
+  ).catch(() => {});
 }
 
 // Haiku 4.5 pricing: $0.80 / 1M input tokens, $4.00 / 1M output tokens
