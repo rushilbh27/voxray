@@ -420,3 +420,36 @@ export function getApplicablePatches(
     alreadyFixed: promptText.length > 0 && !promptText.includes(patch.find),
   }));
 }
+
+/**
+ * Per-agent patch check: for each agent that has this error,
+ * check which patches match that agent's prompt.
+ * Returns only agents where at least one patch find-text exists.
+ */
+export interface AgentPatchResult {
+  agentName: string;
+  patches: { patch: FixPatch; alreadyFixed: boolean }[];
+  hasApplicablePatches: boolean; // at least one find-text exists in prompt
+}
+
+export function getAgentPatches(
+  errorType: string,
+  agents: string[],
+  agentPrompts: Record<string, string>
+): AgentPatchResult[] {
+  const spec = FIX_SPECS[errorType];
+  if (!spec) return [];
+
+  return agents
+    .filter((a) => agentPrompts[a] && agentPrompts[a].length > 0)
+    .map((agentName) => {
+      const promptText = agentPrompts[agentName];
+      const patches = spec.patches.map((patch) => ({
+        patch,
+        alreadyFixed: !promptText.includes(patch.find),
+      }));
+      const hasApplicablePatches = patches.some((p) => !p.alreadyFixed);
+      return { agentName, patches, hasApplicablePatches };
+    })
+    .filter((r) => r.patches.length > 0);
+}
