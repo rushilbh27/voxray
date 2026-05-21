@@ -24,9 +24,21 @@
 .DS_Store
 *.pem
 
-# internal session docs (server IPs, webhook IDs, Telegram bot — not for public)
+# internal docs — not for public repo
 HANDOFF.md
+CLAUDE.md
+AGENTS.md
+CLAUDE_CODE_PROMPT.md
+VOXRAY_PROMPT.md
+PRODUCT.md
+TECHNICAL_SPEC.md
 .impeccable-live.json
+
+# claude/ai tooling configs
+.claude/
+
+# internal planning/spec docs
+docs/superpowers/
 
 # debug
 npm-debug.log*
