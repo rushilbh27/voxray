@@ -24,7 +24,7 @@ export default function LoginPage() {
         setError(data?.error || 'Invalid credentials');
         return;
       }
-      router.push('/');
+      router.push('/dashboard');
     } catch {
       setError('Network error — try again');
     } finally {

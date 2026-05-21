@@ -9,7 +9,7 @@ export function Nav({ activeCalls = 0 }: NavProps) {
     <header className="bg-surface border-b border-border sticky top-0 z-10">
       <div className="max-w-7xl mx-auto px-6 h-12 flex items-center justify-between gap-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 shrink-0">
+        <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0">
           <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-accent text-white text-[11px] font-bold leading-none">
             V
           </span>
