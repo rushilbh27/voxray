@@ -24,6 +24,10 @@
 .DS_Store
 *.pem
 
+# internal session docs (server IPs, webhook IDs, Telegram bot — not for public)
+HANDOFF.md
+.impeccable-live.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*
