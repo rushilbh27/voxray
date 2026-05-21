@@ -14,6 +14,9 @@ import { Nav } from '@/app/components/Nav';
 import { PipelineStrip } from '@/app/components/PipelineStrip';
 import { EvalBadge } from '@/app/components/EvalBadge';
 import { ApplyFixButton } from '@/app/components/ApplyFixButton';
+import { ErrorVelocitySparkline } from '@/app/components/ErrorVelocitySparkline';
+import type { VelocityPoint } from '@/app/components/ErrorVelocitySparkline';
+import { ReanalyzeButton } from '@/app/components/ReanalyzeButton';
 
 // Agent name → Ultravox UUID (apply-fix allowlist checks UUID server-side)
 const AGENT_IDS: Record<string, string> = {
@@ -164,6 +167,7 @@ export default async function Dashboard({
     { data: fpRows },
     { data: pipelineRows },
     { data: evalRows },
+    { data: velocityRows },
   ] = await Promise.all([
     supabaseAdmin.rpc('get_dashboard_aggregates'),
     supabaseAdmin.rpc('get_error_frequency', {
@@ -182,6 +186,7 @@ export default async function Dashboard({
     supabaseAdmin.from('false_positives').select('call_id, error_type'),
     supabaseAdmin.rpc('get_pipeline_stats'),
     supabaseAdmin.rpc('get_eval_stats'),
+    supabaseAdmin.rpc('get_error_velocity'),
   ]);
 
   // ── Stat strip ──────────────────────────────────────────────────────────────
@@ -255,6 +260,16 @@ export default async function Dashboard({
     }
     return point;
   });
+
+  // ── Error velocity map: errorType → sorted weekly points ─────────────────────
+  const velocityMap = new Map<string, VelocityPoint[]>();
+  for (const row of (velocityRows as Array<Record<string, unknown>>) ?? []) {
+    const type  = row.error_type as string;
+    const week  = row.week as string;
+    const count = Number(row.count);
+    if (!velocityMap.has(type)) velocityMap.set(type, []);
+    velocityMap.get(type)!.push({ week, count });
+  }
 
   // ── AI pipeline stats ────────────────────────────────────────────────────────
   const pipelineStats = (pipelineRows as Array<Record<string, unknown>> | null)?.[0] ?? null;
@@ -394,7 +409,15 @@ export default async function Dashboard({
                 <span className="text-ink-3 font-normal text-sm ml-3">{callsWithErrors.toLocaleString()} calls affected</span>
               </h2>
             </div>
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
+              {/* Re-analyze when agent filter active */}
+              {errorAgent && AGENT_IDS[errorAgent] && (
+                <ReanalyzeButton
+                  agentId={AGENT_IDS[errorAgent]}
+                  agentName={errorAgent}
+                  limit={30}
+                />
+              )}
               {/* Agent filter */}
               <div className="flex gap-1">
                 <Link href={buildUrl({ eagent: '', page: '1' })} className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${!errorAgent ? 'bg-ink text-surface border-ink' : 'border-border text-ink-2 hover:border-ink-3'}`}>All</Link>
@@ -489,8 +512,11 @@ export default async function Dashboard({
                               </div>
                             </div>
                           </div>
-                          <div className="shrink-0 text-right w-24 pt-0.5">
-                            <div className="text-xl font-bold text-ink tabular-nums">{err.count}</div>
+                          <div className="shrink-0 text-right w-28 pt-0.5">
+                            <div className="text-xl font-bold text-ink tabular-nums mb-1">{err.count}</div>
+                            <div className="flex justify-end">
+                              <ErrorVelocitySparkline data={velocityMap.get(err.type) ?? []} />
+                            </div>
                             {weekCost > 0 && (
                               <div className="text-xs text-warn font-medium">${weekCost.toFixed(2)}/wk</div>
                             )}
