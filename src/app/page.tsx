@@ -11,6 +11,10 @@ import { LogFixButton } from '@/app/components/LogFixButton';
 import { AckAlertButton } from '@/app/components/AckAlertButton';
 import { FalsePositiveButton } from '@/app/components/FalsePositiveButton';
 import { Nav } from '@/app/components/Nav';
+import { PipelineStrip } from '@/app/components/PipelineStrip';
+import { EvalBadge } from '@/app/components/EvalBadge';
+import { PromptVersionChart } from '@/app/components/PromptVersionChart';
+import type { VersionPoint } from '@/app/components/PromptVersionChart';
 
 export const revalidate = 60;
 
@@ -149,6 +153,8 @@ export default async function Dashboard({
     { data: weeklyRows },
     { data: worstCallsRaw },
     { data: fpRows },
+    { data: pipelineRows },
+    { data: evalRows },
   ] = await Promise.all([
     supabaseAdmin.rpc('get_dashboard_aggregates'),
     supabaseAdmin.rpc('get_error_frequency', {
@@ -165,6 +171,8 @@ export default async function Dashboard({
       .order('critical_error_count', { ascending: false })
       .limit(8),
     supabaseAdmin.from('false_positives').select('call_id, error_type'),
+    supabaseAdmin.rpc('get_pipeline_stats'),
+    supabaseAdmin.rpc('get_eval_stats'),
   ]);
 
   // ── Stat strip ──────────────────────────────────────────────────────────────
@@ -239,6 +247,29 @@ export default async function Dashboard({
     return point;
   });
 
+  // ── AI pipeline stats ────────────────────────────────────────────────────────
+  const pipelineStats = (pipelineRows as Array<Record<string, unknown>> | null)?.[0] ?? null;
+
+  // ── Eval map (FP rate per error type) ────────────────────────────────────────
+  const evalMap = new Map<string, { total_flags: number; fp_count: number }>(
+    ((evalRows as Array<Record<string, unknown>>) ?? []).map((r) => [
+      r.error_type as string,
+      { total_flags: Number(r.total_flags), fp_count: Number(r.fp_count) },
+    ])
+  );
+
+  // ── Prompt version trend (only when agent filter active) ─────────────────────
+  let promptVersionData: VersionPoint[] = [];
+  if (errorAgent) {
+    const { data: pvRows } = await supabaseAdmin.rpc('get_prompt_version_trend', { p_agent: errorAgent });
+    promptVersionData = ((pvRows as Array<Record<string, unknown>>) ?? []).map((r) => ({
+      prompt_hash: r.prompt_hash as string,
+      first_used:  r.first_used as string,
+      total:       Number(r.total),
+      with_errors: Number(r.with_errors),
+    }));
+  }
+
   // ── Before / after comparison (conditional — only when ?compare= is set) ───
   interface ErrorDiff { type: string; before: number; after: number; delta: number; }
   let comparisonData: ErrorDiff[] = [];
@@ -299,6 +330,9 @@ export default async function Dashboard({
             </div>
           ))}
         </div>
+
+        {/* ── AI PIPELINE STRIP ──────────────────────────────────────────────── */}
+        <PipelineStrip stats={pipelineStats as Parameters<typeof PipelineStrip>[0]['stats']} />
 
         {/* ── ALERTS ─────────────────────────────────────────────────────────── */}
         {activeAlerts.length > 0 && (
@@ -386,7 +420,7 @@ export default async function Dashboard({
                         <div className="flex items-start gap-3">
                           <span className="text-sm font-bold text-ink-3 w-5 shrink-0 pt-0.5 tabular-nums">{i + 1}</span>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
+                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                               <span className="text-sm font-medium text-ink leading-snug">
                                 {HUMAN_LABELS[err.type] ?? err.type.replace(/_/g, ' ')}
                               </span>
@@ -395,6 +429,12 @@ export default async function Dashboard({
                                   {err.critical_count} critical
                                 </span>
                               )}
+                              {(() => {
+                                const ev = evalMap.get(err.type);
+                                return ev && ev.total_flags >= 5
+                                  ? <EvalBadge totalFlags={ev.total_flags} fpCount={ev.fp_count} />
+                                  : null;
+                              })()}
                             </div>
                             <div className="text-xs font-mono text-ink-3 mb-2">{err.type}</div>
 
@@ -496,6 +536,20 @@ export default async function Dashboard({
                 <span className="text-xs text-ink-3">Last 12 weeks</span>
               </div>
               <TrendChart data={trendData} agents={trendAgents} />
+            </div>
+          </section>
+        )}
+
+        {/* ── PROMPT VERSION CHART ─────────────────────────────────────────────── */}
+        {errorAgent && (
+          <section className="mb-10">
+            <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Prompt Version Impact</div>
+            <div className="bg-surface border border-border rounded-xl p-5">
+              <div className="mb-4">
+                <h2 className="text-sm font-semibold text-ink">Error rate by prompt version · {errorAgent}</h2>
+                <p className="text-xs text-ink-3 mt-0.5">Each bar = one distinct prompt hash. Most recent = rightmost.</p>
+              </div>
+              <PromptVersionChart data={promptVersionData} agent={errorAgent} />
             </div>
           </section>
         )}
