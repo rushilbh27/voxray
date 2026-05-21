@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
 
       // 4. Analyze — skip very short / unjoined calls
       if (messages.length >= 4) {
-        const { analysis } = await analyzeCall({
+        const result = await analyzeCall({
           callId,
           agentId: call.agentId as string | null ?? null,
           clientName,
@@ -110,10 +110,11 @@ export async function POST(req: NextRequest) {
         await supabaseAdmin
           .from('ultravox_calls')
           .update({
-            call_errors:           analysis,
+            call_errors:           result.analysis,
             analysis_status:       'complete',
-            error_count:           analysis.error_count,
-            critical_error_count:  analysis.critical_error_count,
+            error_count:           result.analysis.error_count,
+            critical_error_count:  result.analysis.critical_error_count,
+            prompt_hash:           result.prompt_hash ?? null,
           })
           .eq('call_id', callId);
       } else {

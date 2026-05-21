@@ -141,102 +141,97 @@ export default async function Dashboard({
 
   const agentPrompts = await fetchAgentPrompts();
 
+  // ── Single parallel fetch — all RPCs + direct queries ──────────────────────
   const [
-    { count: totalCalls },
-    { count: endedCount },
-    { count: successfulCount },
-    { count: activeCalls },
-    { count: totalAnalyzed },
-    { count: callsWithErrors },
-    { data: aggregateRows },
+    { data: aggRows },
+    { data: errorFreqRows },
+    { data: clientRows },
+    { data: weeklyRows },
+    { data: worstCallsRaw },
+    { data: fpRows },
   ] = await Promise.all([
-    supabaseAdmin.from('ultravox_calls').select('*', { count: 'exact', head: true }),
-    supabaseAdmin.from('ultravox_calls').select('*', { count: 'exact', head: true }).eq('status', 'ended'),
-    supabaseAdmin.from('ultravox_calls').select('*', { count: 'exact', head: true }).eq('status', 'ended').not('ended_reason', 'in', '(error,unjoined)'),
-    supabaseAdmin.from('ultravox_calls').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-    supabaseAdmin.from('ultravox_calls').select('*', { count: 'exact', head: true }).eq('analysis_status', 'complete'),
-    supabaseAdmin.from('ultravox_calls').select('*', { count: 'exact', head: true }).gt('error_count', 0).eq('analysis_status', 'complete'),
-    supabaseAdmin.from('ultravox_calls').select('cost_usd, duration_seconds').range(0, 9999),
+    supabaseAdmin.rpc('get_dashboard_aggregates'),
+    supabaseAdmin.rpc('get_error_frequency', {
+      p_since: since ?? null,
+      p_agent: errorAgent || null,
+    }),
+    supabaseAdmin.rpc('get_client_breakdown'),
+    supabaseAdmin.rpc('get_weekly_trend'),
+    supabaseAdmin
+      .from('ultravox_calls')
+      .select('call_id, client_name, call_errors, error_count, critical_error_count')
+      .eq('analysis_status', 'complete')
+      .gt('error_count', 0)
+      .order('critical_error_count', { ascending: false })
+      .limit(8),
+    supabaseAdmin.from('false_positives').select('call_id, error_type'),
   ]);
 
-  const successRate = (endedCount ?? 0) > 0 ? Math.round(((successfulCount ?? 0) / (endedCount ?? 1)) * 100) : 0;
-  const totalCost = aggregateRows?.reduce((s, c) => s + (c.cost_usd || 0), 0) || 0;
-  const callsWithDuration = aggregateRows?.filter((c) => (c.duration_seconds || 0) > 0) || [];
-  const avgDuration = callsWithDuration.length > 0
-    ? Math.round(callsWithDuration.reduce((s, c) => s + (c.duration_seconds || 0), 0) / callsWithDuration.length)
-    : 0;
-  const errorRate = (totalAnalyzed ?? 0) > 0 ? Math.round(((callsWithErrors ?? 0) / (totalAnalyzed ?? 1)) * 100) : 0;
+  // ── Stat strip ──────────────────────────────────────────────────────────────
+  const agg = aggRows?.[0] as Record<string, unknown> | undefined;
+  const totalCalls      = Number(agg?.total_calls ?? 0);
+  const endedCount      = Number(agg?.ended_count ?? 0);
+  const successfulCount = Number(agg?.successful_count ?? 0);
+  const activeCalls     = Number(agg?.active_calls ?? 0);
+  const totalAnalyzed   = Number(agg?.total_analyzed ?? 0);
+  const callsWithErrors = Number(agg?.calls_with_errors ?? 0);
+  const totalCost       = Number(agg?.total_cost ?? 0);
+  const avgDuration     = Math.round(Number(agg?.avg_duration ?? 0));
+  const successRate     = endedCount > 0 ? Math.round((successfulCount / endedCount) * 100) : 0;
+  const errorRate       = totalAnalyzed > 0 ? Math.round((callsWithErrors / totalAnalyzed) * 100) : 0;
 
-  let errorQuery = supabaseAdmin
-    .from('ultravox_calls')
-    .select('call_id, client_name, call_errors, error_count, critical_error_count, created_at, duration_seconds')
-    .eq('analysis_status', 'complete').gt('error_count', 0)
-    .order('critical_error_count', { ascending: false }).range(0, 9999);
-  if (errorAgent) errorQuery = errorQuery.eq('client_name', errorAgent);
-  if (since) errorQuery = errorQuery.gt('created_at', since);
-  const { data: errorCalls } = await errorQuery;
-
+  // ── Error leaderboard ───────────────────────────────────────────────────────
   interface ErrorFrequency {
-    type: string; count: number; critical_count: number;
+    type: string; count: number; critical_count: number; cost_usd: number;
     example_call: string; example_line: string; agents: string[];
   }
-  const freqMap = new Map<string, ErrorFrequency>();
-  for (const call of errorCalls ?? []) {
-    const analysis = call.call_errors as ErrorAnalysis | null;
-    if (!analysis?.errors) continue;
-    for (const err of analysis.errors) {
-      if (!freqMap.has(err.type)) freqMap.set(err.type, { type: err.type, count: 0, critical_count: 0, example_call: call.call_id, example_line: err.agent_line ?? '', agents: [] });
-      const freq = freqMap.get(err.type)!;
-      freq.count++;
-      if (err.severity === 'critical') freq.critical_count++;
-      if (!freq.agents.includes(call.client_name)) freq.agents.push(call.client_name);
-    }
-  }
-  const topErrors = Array.from(freqMap.values()).sort((a, b) => b.count - a.count);
-  const worstCalls = [...(errorCalls ?? [])].sort((a, b) => (b.critical_error_count ?? 0) - (a.critical_error_count ?? 0)).slice(0, 8);
+  const topErrors: ErrorFrequency[] = (errorFreqRows ?? []).map((row: Record<string, unknown>) => ({
+    type:           row.error_type as string,
+    count:          Number(row.count),
+    critical_count: Number(row.critical_count),
+    cost_usd:       Number(row.cost_usd),
+    example_call:   row.example_call_id as string,
+    example_line:   (row.example_line as string) ?? '',
+    agents:         (row.agents as string[]) ?? [],
+  }));
 
-  const { data: costRows } = await supabaseAdmin.from('ultravox_calls').select('call_errors, cost_usd, created_at').eq('analysis_status', 'complete').gt('error_count', 0).range(0, 9999);
-  const errorCostMap: Record<string, number> = {};
-  const firstCallDate = costRows?.length ? new Date(costRows[costRows.length - 1].created_at as string) : new Date();
-  const weeksOfData = Math.max(1, Math.round((Date.now() - firstCallDate.getTime()) / (7 * 24 * 60 * 60 * 1000)));
-  for (const row of costRows ?? []) {
-    const errs = (row.call_errors as ErrorAnalysis | null)?.errors ?? [];
-    const cost = (row.cost_usd as number) ?? 0;
-    const seen = new Set<string>();
-    for (const e of errs) { if (!seen.has(e.type)) { errorCostMap[e.type] = (errorCostMap[e.type] ?? 0) + cost; seen.add(e.type); } }
-  }
+  // Cost per week — derive from first week in trend data
+  const firstWeekStr = (weeklyRows as Array<Record<string, unknown>> | null)?.[0]?.week as string | undefined;
+  const weeksOfData = firstWeekStr
+    ? Math.max(1, Math.round(
+        (Date.now() - new Date(firstWeekStr.replace(/(\d{4})-W(\d{2})/, (_, y, w) =>
+          new Date(Number(y), 0, 1 + (Number(w) - 1) * 7).toISOString().slice(0, 10)
+        )).getTime()) / (7 * 24 * 60 * 60 * 1000)
+      ))
+    : 1;
 
-  const { data: fpRows } = await supabaseAdmin.from('false_positives').select('call_id, error_type');
+  const worstCalls = worstCallsRaw ?? [];
   const fpSet = new Set((fpRows ?? []).map((r) => `${r.call_id}::${r.error_type}`));
 
-  const { data: clientBreakdown } = await supabaseAdmin.from('ultravox_calls').select('client_name').range(0, 9999);
-  const clientCounts: Record<string, number> = {};
-  for (const c of clientBreakdown || []) clientCounts[c.client_name] = (clientCounts[c.client_name] || 0) + 1;
-  const clients = Object.entries(clientCounts).sort((a, b) => b[1] - a[1]);
+  // ── Client breakdown for filter pills ──────────────────────────────────────
+  const clients = (clientRows as Array<Record<string, unknown>> ?? []).map(
+    (r) => [r.client_name as string, Number(r.count)] as [string, number]
+  );
 
-  const { data: trendRaw } = await supabaseAdmin.from('ultravox_calls').select('client_name, created_at, error_count, analysis_status').eq('analysis_status', 'complete').order('created_at', { ascending: true }).range(0, 9999);
+  // ── Trend chart ─────────────────────────────────────────────────────────────
   type WeekMap = Map<string, { analyzed: number; errors: number }>;
   const trendByAgent: Record<string, WeekMap> = {};
-  for (const c of trendRaw ?? []) {
-    const agent = c.client_name as string;
-    const d = new Date(c.created_at as string);
-    const yr = d.getUTCFullYear();
-    const wk = Math.ceil((((d.getTime() - new Date(yr, 0, 1).getTime()) / 86400000) + new Date(yr, 0, 1).getUTCDay() + 1) / 7);
-    const key = `${yr}-W${String(wk).padStart(2, '0')}`;
+  for (const row of (weeklyRows as Array<Record<string, unknown>> ?? [])) {
+    const agent = row.agent as string;
+    const wk    = row.week as string;
     if (!trendByAgent[agent]) trendByAgent[agent] = new Map();
-    const wm = trendByAgent[agent];
-    if (!wm.has(key)) wm.set(key, { analyzed: 0, errors: 0 });
-    const entry = wm.get(key)!;
-    entry.analyzed++;
-    if ((c.error_count as number ?? 0) > 0) entry.errors++;
+    trendByAgent[agent].set(wk, {
+      analyzed: Number(row.analyzed),
+      errors:   Number(row.errors),
+    });
   }
-  const allWeeks = [...new Set(Object.values(trendByAgent).flatMap((wm) => [...wm.keys()]))].sort().slice(-12);
+  const allWeeks    = [...new Set(Object.values(trendByAgent).flatMap((wm) => [...wm.keys()]))].sort().slice(-12);
   const trendAgents = Object.keys(trendByAgent).filter((a) => a !== 'NECTOR Demo');
-  const trendData = allWeeks.map((wk) => {
+  const trendData   = allWeeks.map((wk) => {
     const [yr, w] = wk.split('-W').map(Number);
     const approxDate = new Date(yr, 0, 1 + (w - 1) * 7);
-    const label = approxDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const point = { week: wk, label } as import('@/app/components/TrendChart').TrendPoint;
+    const label      = approxDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const point      = { week: wk, label } as import('@/app/components/TrendChart').TrendPoint;
     for (const agent of trendAgents) {
       const entry = trendByAgent[agent]?.get(wk);
       point[agent] = entry && entry.analyzed > 0 ? Math.round((entry.errors / entry.analyzed) * 100) : 0;
@@ -244,18 +239,21 @@ export default async function Dashboard({
     return point;
   });
 
+  // ── Before / after comparison (conditional — only when ?compare= is set) ───
   interface ErrorDiff { type: string; before: number; after: number; delta: number; }
   let comparisonData: ErrorDiff[] = [];
   if (compareDate) {
-    const [beforeRows, afterRows] = await Promise.all([
-      supabaseAdmin.from('ultravox_calls').select('call_errors').eq('analysis_status', 'complete').gt('error_count', 0).lt('created_at', new Date(compareDate).toISOString()).range(0, 9999),
-      supabaseAdmin.from('ultravox_calls').select('call_errors').eq('analysis_status', 'complete').gt('error_count', 0).gte('created_at', new Date(compareDate).toISOString()).range(0, 9999),
-    ]);
-    const countErrors = (rows: typeof beforeRows.data) => { const map: Record<string, number> = {}; for (const r of rows ?? []) { const errs = (r.call_errors as ErrorAnalysis | null)?.errors ?? []; for (const e of errs) map[e.type] = (map[e.type] || 0) + 1; } return map; };
-    const beforeCounts = countErrors(beforeRows.data);
-    const afterCounts = countErrors(afterRows.data);
-    const allTypes = new Set([...Object.keys(beforeCounts), ...Object.keys(afterCounts)]);
-    comparisonData = Array.from(allTypes).map(type => ({ type, before: beforeCounts[type] || 0, after: afterCounts[type] || 0, delta: (afterCounts[type] || 0) - (beforeCounts[type] || 0) })).sort((a, b) => a.delta - b.delta);
+    const { data: compRows } = await supabaseAdmin.rpc('get_comparison_data', {
+      p_date: new Date(compareDate).toISOString(),
+    });
+    comparisonData = ((compRows as Array<Record<string, unknown>>) ?? [])
+      .map((r) => ({
+        type:   r.error_type as string,
+        before: Number(r.before_count),
+        after:  Number(r.after_count),
+        delta:  Number(r.after_count) - Number(r.before_count),
+      }))
+      .sort((a, b) => a.delta - b.delta);
   }
 
   const activeAlerts = await import('@/lib/alert-engine').then((m) => m.runAlertCheck()).catch(() => [] as import('@/lib/alert-engine').FiredAlert[]);
@@ -273,8 +271,8 @@ export default async function Dashboard({
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
-  const analyzed = totalAnalyzed ?? 0;
-  const analysisPct = (totalCalls ?? 0) > 0 ? Math.round((analyzed / (totalCalls ?? 1)) * 100) : 0;
+  const analyzed = totalAnalyzed;
+  const analysisPct = totalCalls > 0 ? Math.round((analyzed / totalCalls) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -340,7 +338,7 @@ export default async function Dashboard({
               <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Error Intelligence</div>
               <h2 className="text-xl font-bold text-ink leading-none">
                 {topErrors.length} error type{topErrors.length !== 1 ? 's' : ''}
-                <span className="text-ink-3 font-normal text-base ml-2">across {errorCalls?.length ?? 0} calls</span>
+                <span className="text-ink-3 font-normal text-base ml-2">across {callsWithErrors} calls</span>
               </h2>
             </div>
             <div className="flex items-center gap-3 shrink-0">
@@ -382,7 +380,7 @@ export default async function Dashboard({
                     const agentName = err.agents[0] ?? '';
                     const promptText = agentPrompts[agentName] ?? '';
                     const patches = getApplicablePatches(err.type, promptText);
-                    const weekCost = errorCostMap[err.type] ? (errorCostMap[err.type] / weeksOfData) : 0;
+                    const weekCost = err.cost_usd ? (err.cost_usd / weeksOfData) : 0;
                     return (
                       <div key={err.type} className="px-5 py-4">
                         <div className="flex items-start gap-3">

@@ -16,6 +16,7 @@ export interface CallError {
   what_went_wrong: string;
   should_have_said: string;
   timestamp_index: number; // message ordinal
+  confidence: number; // 0.0 = uncertain, 1.0 = certain — rated by Haiku per error
 }
 
 export interface ErrorAnalysis {
@@ -52,7 +53,8 @@ Return ONLY valid JSON matching this exact schema:
       "agent_line": "exact quote from transcript",
       "what_went_wrong": "concise explanation",
       "should_have_said": "what the correct response would be",
-      "timestamp_index": number (message index, 0-based)
+      "timestamp_index": number (message index, 0-based),
+      "confidence": number (0.0 to 1.0 — how certain are you this is a real rule violation, not a transcription artifact or legitimate agent judgment call)
     }
   ],
   "goal_achieved": boolean,
@@ -187,7 +189,8 @@ function formatTranscript(messages: Array<{ role: string; text: string; ordinal:
 
 export async function analyzeCallErrors(
   messages: Array<{ role: string; text: string; ordinal: number }>,
-  agentType: AgentType
+  agentType: AgentType,
+  opts?: { callId?: string; promptHash?: string }
 ): Promise<ErrorAnalysis> {
   if (messages.length === 0) {
     return {
@@ -204,10 +207,44 @@ export async function analyzeCallErrors(
   const transcript = formatTranscript(messages);
   const prompt = buildAnalysisPrompt(agentType, transcript);
 
-  const response = await getClient().messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 2048,
-    messages: [{ role: 'user', content: prompt }],
+  const t0 = Date.now();
+  let response: Awaited<ReturnType<ReturnType<typeof getClient>['messages']['create']>>;
+
+  try {
+    response = await getClient().messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: prompt }],
+    });
+  } catch (err) {
+    const { recordLlmTrace } = await import('./llm-trace');
+    recordLlmTrace({
+      call_id:       opts?.callId,
+      model:         'claude-haiku-4-5-20251001',
+      purpose:       'error_analysis',
+      agent_type:    agentType,
+      latency_ms:    Date.now() - t0,
+      success:       false,
+      error_message: String(err),
+      prompt_hash:   opts?.promptHash,
+    });
+    throw err;
+  }
+
+  const latencyMs = Date.now() - t0;
+  const { input_tokens, output_tokens } = response.usage;
+  const { recordLlmTrace, computeHaikuCost } = await import('./llm-trace');
+  recordLlmTrace({
+    call_id:       opts?.callId,
+    model:         'claude-haiku-4-5-20251001',
+    purpose:       'error_analysis',
+    agent_type:    agentType,
+    input_tokens,
+    output_tokens,
+    latency_ms:    latencyMs,
+    cost_usd:      computeHaikuCost(input_tokens, output_tokens),
+    success:       true,
+    prompt_hash:   opts?.promptHash,
   });
 
   const text = response.content[0].type === 'text' ? response.content[0].text : '';

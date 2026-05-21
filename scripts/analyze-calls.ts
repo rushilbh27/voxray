@@ -51,7 +51,7 @@ async function processCall(call: { call_id: string; client_name: string; agent_i
       .eq('call_id', call.call_id)
       .order('ordinal', { ascending: true });
 
-    const { analysis } = await analyzeCall({
+    const result = await analyzeCall({
       callId: call.call_id,
       agentId: call.agent_id ?? null,
       clientName: call.client_name ?? '',
@@ -62,16 +62,17 @@ async function processCall(call: { call_id: string; client_name: string; agent_i
     await supabase
       .from('ultravox_calls')
       .update({
-        call_errors: analysis,
-        analysis_status: 'complete',
-        error_count: analysis.error_count,
-        critical_error_count: analysis.critical_error_count,
+        call_errors:          result.analysis,
+        analysis_status:      'complete',
+        error_count:          result.analysis.error_count,
+        critical_error_count: result.analysis.critical_error_count,
+        prompt_hash:          result.prompt_hash ?? null,
       })
       .eq('call_id', call.call_id);
 
     counters.done++;
-    const label = analysis.error_count > 0
-      ? ` ⚠ ${analysis.critical_error_count}c / ${analysis.error_count} errors`
+    const label = result.analysis.error_count > 0
+      ? ` ⚠ ${result.analysis.critical_error_count}c / ${result.analysis.error_count} errors`
       : ' ✓ clean';
     process.stdout.write(`[${counters.done}/${counters.total}] ${call.call_id.substring(0, 8)} (${call.client_name})${label}\n`);
   } catch (err) {

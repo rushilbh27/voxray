@@ -52,7 +52,7 @@ export async function GET(request: Request) {
         .eq('call_id', call.call_id)
         .order('ordinal', { ascending: true });
 
-      const { analysis } = await analyzeCall({
+      const result = await analyzeCall({
         callId: call.call_id,
         agentId: call.agent_id ?? null,
         clientName: call.client_name ?? '',
@@ -63,10 +63,11 @@ export async function GET(request: Request) {
       await supabaseAdmin
         .from('ultravox_calls')
         .update({
-          call_errors: analysis,
-          analysis_status: 'complete',
-          error_count: analysis.error_count,
-          critical_error_count: analysis.critical_error_count,
+          call_errors:          result.analysis,
+          analysis_status:      'complete',
+          error_count:          result.analysis.error_count,
+          critical_error_count: result.analysis.critical_error_count,
+          prompt_hash:          result.prompt_hash ?? null,
         })
         .eq('call_id', call.call_id);
 
