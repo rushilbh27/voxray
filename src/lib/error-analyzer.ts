@@ -177,8 +177,10 @@ function formatTranscript(messages: Array<{ role: string; text: string; ordinal:
                  m.role.includes('TOOL') ? 'Tool' : 'User';
     return `[${i}] ${role}: ${m.text}`;
   });
-  // ~4 chars per token; keep well under 180k tokens of transcript budget
-  const MAX_CHARS = 600_000;
+  // African languages (Luganda/Swahili) tokenize at ~2 chars/token, not 4.
+  // 200k model limit - 10k system prompt - 2k output = 188k tokens available.
+  // 188k × 2 chars/token = 376k chars max → use 300k for safety margin.
+  const MAX_CHARS = 300_000;
   const full = lines.join('\n');
   if (full.length <= MAX_CHARS) return full;
   // Keep first 20% (opening) + last 80% (resolution/save) — errors cluster at end
