@@ -102,6 +102,12 @@ async function main() {
   const { data: calls } = await query;
   if (!calls?.length) { console.log('Nothing to analyze.'); return; }
 
+  // Claim ALL calls atomically before processing — prevents two terminals re-doing same work
+  await supabase
+    .from('ultravox_calls')
+    .update({ analysis_status: 'analyzing' })
+    .in('call_id', calls.map(c => c.call_id));
+
   counters.total = calls.length;
   console.log(`Found ${calls.length} calls — processing ${CONCURRENCY} at a time\n`);
 
