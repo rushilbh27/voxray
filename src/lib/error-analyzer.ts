@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { jsonrepair } from 'jsonrepair';
 
 // Lazy-init so the API key is read at call time, not at module load
 let _client: Anthropic | null = null;
@@ -276,23 +277,13 @@ export async function analyzeCallErrors(
     throw new Error('No JSON in analysis response');
   }
 
-  // Strip control characters that break JSON.parse (common in Haiku agent_line quotes)
+  // Strip control chars, then use jsonrepair to fix unescaped quotes in agent_line strings
   const cleaned = jsonMatch[0].replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
   let analysis: ErrorAnalysis;
   try {
-    analysis = JSON.parse(cleaned) as ErrorAnalysis;
+    analysis = JSON.parse(jsonrepair(cleaned)) as ErrorAnalysis;
   } catch (parseErr) {
-    // Last resort: attempt to recover by truncating to last valid closing brace
-    const lastBrace = cleaned.lastIndexOf('}\n]');
-    if (lastBrace > 0) {
-      try {
-        analysis = JSON.parse(cleaned.slice(0, lastBrace + 3) + '}}') as ErrorAnalysis;
-      } catch {
-        throw new Error(`JSON parse failed: ${String(parseErr)}`);
-      }
-    } else {
-      throw new Error(`JSON parse failed: ${String(parseErr)}`);
-    }
+    throw new Error(`JSON parse failed: ${String(parseErr)}`);
   }
   analysis.error_count = analysis.errors?.length ?? 0;
   analysis.critical_error_count = analysis.errors?.filter(e => e.severity === 'critical').length ?? 0;
