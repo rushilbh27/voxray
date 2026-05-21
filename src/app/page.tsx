@@ -307,26 +307,36 @@ export default async function Dashboard({
 
   return (
     <div className="min-h-screen bg-canvas">
-      <Nav />
+      <Nav activeCalls={activeCalls} />
 
       <main className="max-w-7xl mx-auto px-6 pb-16">
 
         {/* ── STAT STRIP ─────────────────────────────────────────────────────── */}
         <div className="py-6 border-b border-border mb-8 grid grid-cols-4 md:grid-cols-7 gap-6">
           {[
-            { label: 'Total Calls', value: (totalCalls ?? 0).toLocaleString(), hi: false },
-            { label: 'Success Rate', value: `${successRate}%`, hi: successRate < 70 },
-            { label: 'Error Rate', value: `${errorRate}%`, hi: errorRate > 50, crit: errorRate > 70 },
-            { label: 'Avg Duration', value: `${Math.floor(avgDuration / 60)}m ${avgDuration % 60}s`, hi: false },
-            { label: 'Total Cost', value: `$${totalCost.toFixed(2)}`, hi: false },
-            { label: 'Analyzed', value: `${analyzed.toLocaleString()} (${analysisPct}%)`, hi: analysisPct < 50 },
-            { label: 'Live Now', value: String(activeCalls ?? 0), hi: false, live: (activeCalls ?? 0) > 0 },
+            { label: 'Total Calls',   value: (totalCalls ?? 0).toLocaleString(), hi: false },
+            { label: 'Success Rate',  value: `${successRate}%`,                  hi: successRate < 70 },
+            { label: 'Error Rate',    value: `${errorRate}%`,                    hi: errorRate > 50, crit: errorRate > 70 },
+            { label: 'Avg Duration',  value: `${Math.floor(avgDuration / 60)}m ${avgDuration % 60}s`, hi: false },
+            { label: 'Total Cost',    value: `$${totalCost.toFixed(2)}`,          hi: false },
+            { label: 'Analyzed',      value: `${analyzed.toLocaleString()} (${analysisPct}%)`, hi: analysisPct < 50 },
+            { label: 'Live Now',      value: String(activeCalls ?? 0),            hi: false, live: (activeCalls ?? 0) > 0 },
           ].map(({ label, value, hi, crit, live }) => (
             <div key={label}>
-              <div className="text-[11px] font-medium text-ink-3 uppercase tracking-wider mb-1">{label}</div>
-              <div className={`text-xl font-bold tabular-nums ${
-                crit ? 'text-crit' : hi ? 'text-warn' : live ? 'text-accent' : 'text-ink'
-              }`}>{value}</div>
+              <div className="text-[11px] font-medium text-ink-3 uppercase tracking-wider mb-1.5">{label}</div>
+              <div className={`tabular-nums font-bold leading-none ${
+                crit
+                  ? 'text-3xl font-black text-crit'
+                  : hi
+                    ? 'text-2xl text-warn'
+                    : live
+                      ? 'text-2xl text-accent'
+                      : 'text-2xl text-ink'
+              }`}>
+                {live && (activeCalls ?? 0) > 0
+                  ? <span className="inline-flex items-center gap-1.5">{value}<span className="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /></span>
+                  : value}
+              </div>
             </div>
           ))}
         </div>
@@ -370,9 +380,9 @@ export default async function Dashboard({
           <div className="flex items-end justify-between gap-4 mb-5">
             <div>
               <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Error Intelligence</div>
-              <h2 className="text-xl font-bold text-ink leading-none">
-                {topErrors.length} error type{topErrors.length !== 1 ? 's' : ''}
-                <span className="text-ink-3 font-normal text-base ml-2">across {callsWithErrors} calls</span>
+              <h2 className="text-2xl font-black text-ink leading-none">
+                {topErrors.length} <span className="font-normal text-ink-3 text-lg">error type{topErrors.length !== 1 ? 's' : ''}</span>
+                <span className="text-ink-3 font-normal text-sm ml-3">{callsWithErrors.toLocaleString()} calls affected</span>
               </h2>
             </div>
             <div className="flex items-center gap-3 shrink-0">
