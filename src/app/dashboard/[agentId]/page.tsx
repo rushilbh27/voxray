@@ -97,7 +97,8 @@ export default async function AgentProfilePage({
     { data: aggRows },
     { data: heatmapCalls },
     { data: outcomeCalls },
-    compareResult,
+    { data: beforeCalls },
+    { data: afterCalls },
   ] = await Promise.all([
     fetchAgent(agentId),
     supabaseAdmin.rpc('get_error_frequency', {
@@ -140,9 +141,13 @@ export default async function AgentProfilePage({
       .gte('created_at', twelveWeeksAgo)
       .order('created_at', { ascending: true })
       .limit(1000),
-    // Before/after comparison (only when ?compare= is set)
+    // Before: calls before compareDate
     compareDate
-      ? supabaseAdmin.rpc('get_comparison_data', { p_date: compareDate, p_agent: clientName })
+      ? supabaseAdmin.from('ultravox_calls').select('call_errors').eq('agent_id', agentId).eq('analysis_status', 'complete').lt('created_at', compareDate).limit(2000)
+      : Promise.resolve({ data: null, error: null }),
+    // After: calls on/after compareDate
+    compareDate
+      ? supabaseAdmin.from('ultravox_calls').select('call_errors').eq('agent_id', agentId).eq('analysis_status', 'complete').gte('created_at', compareDate).limit(2000)
       : Promise.resolve({ data: null, error: null }),
   ]);
 
@@ -205,8 +210,29 @@ export default async function AgentProfilePage({
   const heatmapRows = buildHeatmapRows(heatmapCalls ?? []);
   const outcomeData = buildOutcomeData(outcomeCalls ?? []);
 
-  // Before/after comparison
-  const compareData = compareResult?.data as Array<Record<string, unknown>> | null;
+  // Before/after comparison — compute in JS from two date-range queries
+  interface CompareRow { error_type: string; before_count: number; after_count: number }
+  const compareData: CompareRow[] | null = (() => {
+    if (!compareDate || !beforeCalls || !afterCalls) return null;
+    const countErrors = (calls: Array<{ call_errors: unknown }>) => {
+      const counts = new Map<string, number>();
+      for (const call of calls) {
+        const errors = (call.call_errors as { errors?: Array<{ type: string }> } | null)?.errors ?? [];
+        const seen = new Set<string>();
+        for (const e of errors) {
+          if (!seen.has(e.type)) { seen.add(e.type); counts.set(e.type, (counts.get(e.type) ?? 0) + 1); }
+        }
+      }
+      return counts;
+    };
+    const before = countErrors(beforeCalls);
+    const after = countErrors(afterCalls);
+    const allTypes = new Set([...before.keys(), ...after.keys()]);
+    return [...allTypes]
+      .map((t) => ({ error_type: t, before_count: before.get(t) ?? 0, after_count: after.get(t) ?? 0 }))
+      .filter((r) => r.before_count > 0 || r.after_count > 0)
+      .sort((a, b) => b.before_count - a.before_count);
+  })();
 
   // Collect all fixable error types for "Apply All" button
   const fixableErrors: string[] = [];
@@ -520,13 +546,13 @@ export default async function AgentProfilePage({
             {compareData && compareData.length > 0 ? (
               <div className="grid grid-cols-2 gap-4">
                 {compareData.map((row) => {
-                  const before = Number(row.before_count ?? 0);
-                  const after = Number(row.after_count ?? 0);
+                  const before = row.before_count;
+                  const after = row.after_count;
                   const change = before > 0 ? Math.round(((after - before) / before) * 100) : 0;
                   const improved = change < 0;
                   return (
-                    <div key={row.error_type as string} className="bg-surface-2 rounded-lg p-3">
-                      <div className="text-xs font-medium text-ink mb-2">{HUMAN_LABELS[row.error_type as string] ?? row.error_type as string}</div>
+                    <div key={row.error_type} className="bg-surface-2 rounded-lg p-3">
+                      <div className="text-xs font-medium text-ink mb-2">{HUMAN_LABELS[row.error_type] ?? row.error_type}</div>
                       <div className="flex items-center gap-4">
                         <div>
                           <div className="text-lg font-bold text-ink-2 tabular-nums">{before}</div>
