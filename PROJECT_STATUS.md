@@ -1,6 +1,6 @@
 # Voxray — Project Status Report
 
-> Last updated: 2026-05-22 (session 2 sync)  
+> Last updated: 2026-05-22 (session 3 — features + full structural audit)  
 > Update this file every session. Not a handoff bridge — a permanent record of what was built, where we stand, and where we're going.
 
 ---
@@ -164,14 +164,54 @@ Feedback loop: every fix has before/after proof
 | Davansh + Edifice | `wrong_info`, `no_save_answers` |
 
 ### Phase 9 — Fix-Specs for NECTOR Demo + Real Estate AI (session 2)
-- NECTOR Demo: 4 patches written — `wrong_info` (context verification gate), `accepted_garbled_audio` (garbled counter rule), `no_save_answers` (early exit enforcement), `stacked_questions` (self-correction rule)
-- Real_Estate_AI: 3 patches written — `broke_promise` (forbidden phrases list), `wrong_info` (context-only gate), `no_save_answers` (tool enforcement on partial calls)
-- Ramco Gas / Follow-Up Debt / Debt Welcome: verified healthy (no active errors in DB), no patches needed
-- PROJECT_STATUS.md + HANDOFF.md updated to reflect actual state
+- NECTOR Demo: 4 patches written — `wrong_info`, `accepted_garbled_audio`, `no_save_answers`, `stacked_questions`
+- Real_Estate_AI: 3 patches written — `broke_promise`, `wrong_info`, `no_save_answers`
+- Ramco Gas / Follow-Up Debt / Debt Welcome: verified healthy (no active errors), no patches needed
+
+### Phase 10 — Repeat Error Tracker + 7 New Features (session 3)
+Key commits: `ee62fa1`, `8ce3501`, `66e6527`, `8a75e62`, `8c5b05e`
+
+**Repeat Error Tracker** (`src/lib/repeat-error-tracker.ts`):
+- Fires after every call analysis — checks if same error has fired 3+ times in 30 days for this agent
+- Three alert tiers: FIX REGRESSION (fix applied but error returned) / apply-now (fix available) / write-patch (no patch yet)
+- Auto-applies fix if: allowlisted agent + FP rate < 5% + total_flags ≥ 10 (high-confidence auto-heal)
+- Telegram alert includes direct profile page deep-link button
+
+**Telegram inline buttons** (`src/lib/telegram.ts`):
+- Shared module with inline keyboard support
+- Alert engine sends agent profile URL button per fired alert
+- Repeat tracker sends direct `/dashboard/{agentId}` button
+
+**Agent profile page — 4 new sections:**
+- ErrorHeatmap: 30-day calendar grid per top-6 error type (server utils in `src/lib/heatmap-utils.ts`)
+- OutcomeChart: 12-week stacked bar (success/no_answer/not_interested/incomplete/no_save)
+- Before/after comparison: date picker → `?compare=YYYY-MM-DD` → two Supabase queries → per-error counts with % change
+- Customer name badge + call date in worst calls panel
+
+**Call detail page:**
+- Customer name shown in header (from Llama enrichment)
+- Llama `missed_opportunities` rendered as "Coaching Notes · Audio AI" section (separate from Haiku coaching)
+
+**Auto re-analyze after fix:**
+- `apply-fix` route now triggers re-analysis of last 15 calls after patching (fire-and-forget)
+- Error rates update in ~60s post-fix, no manual reanalyze needed
+
+**Dashboard grid fixes:**
+- `get_agent_error_summary` only returned agents with errors — healthy agents were missing
+- Fixed: merged with `clientRows` (all clients) to guarantee every agent shows
+- Static `KNOWN_AGENT_IDS` map ensures card links work even when DB `agent_id = null`
+- "Shell Gas Uganda" mapped to Ramco Gas UUID (actual DB client_name differs from agent name)
+- Noise clients (Unknown, Acme Corp, test names) excluded via `EXCLUDED_CLIENTS`
+- Result: 7 real agents, all linked ✅
+
+**Structural bugs fixed:**
+- `buildHeatmapRows`/`buildOutcomeData` in `'use client'` files → crashed server component → moved to `src/lib/`
+- `get_comparison_data` RPC broken → replaced with direct two-query JS computation
+- Playwright test artifacts added to `.gitignore`
 
 ### Phase 8 — Transcript Examples on Agent Profile (`cc21216`)
-- `example_line` (`agent_line` from `call_errors` JSONB) was fetched from `get_error_frequency` RPC but never rendered
-- Added "Agent said" block inline on each error row — shows exact quote of what agent said when error fired
+- `example_line` (`agent_line` from `call_errors` JSONB) was fetched but never rendered
+- Added "Agent said" block inline on each error row
 
 ---
 
@@ -197,29 +237,32 @@ Feedback loop: every fix has before/after proof
 - ✅ `goal_achieved` field per call
 
 ### Dashboard
-- ✅ `/dashboard` — agent grid with per-agent error rates
+- ✅ `/dashboard` — agent grid, 7 agents all linked, sorted by call volume
 - ✅ `/dashboard/[agentId]` — per-agent profile:
-  - Error leaderboard (agent-only)
-  - **"Agent said" transcript quote per error**
-  - Verified prompt patches with line numbers
-  - Find/replace UI with copy buttons
-  - Apply Fix (NECTOR Demo only)
+  - Stat strip (total calls, error rate, critical count)
+  - Error leaderboard with "Agent said" transcript quote
+  - Verified patches with line numbers + find/replace UI
+  - Apply Fix (NECTOR Demo + Davansh allowlisted)
   - Apply All Fixes button
-  - Worst calls panel
-  - Prompt version chart
-  - Full prompt viewer
+  - Worst calls panel (customer name + date shown)
+  - **Error Heatmap — 30-day calendar per error type**
+  - **Outcome Chart — 12-week stacked success/failure breakdown**
+  - **Before/After comparison — date picker, per-error % change**
+  - Prompt version chart (error rate by prompt hash)
+  - Full prompt viewer (collapsible)
 - ✅ Stat strip (7 metrics)
 - ✅ AI pipeline strip (p50/p95 latency, cost, success rate)
 - ✅ Error rate trend chart (12 weeks, per agent)
 - ✅ False positive tracking + precision badges per error type
 - ✅ Error velocity sparklines (8-week trend per error type)
 - ✅ Eval framework (precision, FP rate, confidence, cost/week)
+- ✅ Nav bar: Agents link, monitoring status
 
 ### Alerting
-- ✅ 6 alert rules (garbled burst, location failures, no-save burst, debt no-save, critical error, wrong cold opening)
-- ✅ Telegram delivery
-- ✅ 4h/24h acknowledgment (suppresses repeats)
-- ✅ Dashboard alert banner
+- ✅ 6 burst alert rules (Telegram, ack suppression)
+- ✅ **Repeat error tracker** — per-call, 30-day window, 3 tiers (regression/apply/write)
+- ✅ **Telegram inline buttons** — deep-link to agent profile from every alert
+- ✅ Auto-apply for allowlisted agents when FP rate < 5%
 
 ### Other
 - ✅ REST API v1 (`/stats`, `/errors`, `/calls`, `/calls/:id`, `/export`)
@@ -315,24 +358,35 @@ Each error type has patches (find→replace strings). On the agent profile page,
 | `src/app/api/cron/route.ts` | Daily: 30 calls + sync + alerts |
 | `src/app/components/FixBlock.tsx` | Find/replace UI with copy buttons |
 | `src/app/components/TrendChart.tsx` | 12-week error rate chart |
-| `src/app/components/ApplyFixButton.tsx` | One-click apply (NECTOR Demo only) |
+| `src/app/components/ApplyFixButton.tsx` | One-click apply (NECTOR Demo + Davansh) |
+| `src/app/components/ErrorHeatmap.tsx` | 30-day calendar heatmap per error type |
+| `src/app/components/OutcomeChart.tsx` | 12-week stacked outcome bar chart |
+| `src/app/dashboard/[agentId]/CompareForm.tsx` | Before/after date picker (client component) |
+| `src/lib/heatmap-utils.ts` | Server-safe heatmap data builder |
+| `src/lib/outcome-utils.ts` | Server-safe outcome data builder |
+| `src/lib/repeat-error-tracker.ts` | Recurring error detection + Telegram alert |
+| `src/lib/telegram.ts` | Shared Telegram module with inline keyboard |
 
 ---
 
 ## What's Left — Prioritized
 
-### High priority
-- [ ] **Before/after comparison on agent profile** — `get_comparison_data(date)` RPC exists but UI removed from dashboard. Add `?compare=YYYY-MM-DD` to agent profile page.
-- [ ] **Expand apply-fix allowlist** — when FP rate < 10% for an error type on production agent, consider adding that agent. Currently NECTOR Demo only.
+### Next up: UI/UX pass (session 4)
+Homepage excluded — focus on dashboard, agent profile, call detail.
+
+- [ ] **Dashboard grid** — visual polish, better error rate display, clearer call volume
+- [ ] **Agent profile** — information hierarchy, heatmap readability, section spacing
+- [ ] **Call detail** — transcript readability, error highlights inline in transcript
+- [ ] **General** — color system consistency, loading states, empty states, mobile
 
 ### Medium priority
-- [ ] **Ramco Gas / Follow-Up Debt / Welcome Bot patches** — currently healthy (no errors). If errors start appearing, write patches against their actual prompts.
-- [ ] **Verify NECTOR Demo + Real Estate patches** — patches written but `verifyPatch()` not confirmed against live prompt text. Run agent profile page for these agents to confirm line numbers show.
+- [ ] **Shell Gas Uganda agent profile** — `client_name` is "Shell Gas Uganda" in DB but agent name at Ultravox is "Ramco_Gas_inbound". Heatmap/outcome data works. Fix-specs may not match since patches reference "Ramco Gas" client_name.
+- [ ] **Real Estate AI + NECTOR Demo patch verification** — patches written, need live confirmation `verifyPatch()` finds them (run profile pages and check line numbers)
+- [ ] **Expand auto-apply allowlist** — currently NECTOR Demo + Davansh. When FP rate < 5% on any production agent error type, consider adding.
 
 ### Low priority
-- [ ] **README update** — document agent profile flow for new users
-- [ ] **Customer name display** — `customer_name` from Llama enrichment available but not surfaced in call detail or worst calls panel
 - [ ] **Call recordings** — `GET /api/calls/{id}/recording` available, not exposed in UI
+- [ ] **README update** — document agent profile flow
 
 ---
 
