@@ -270,27 +270,56 @@ export default async function CallDetailPage({ params }: Props) {
               )}
             </div>
 
-            {/* Call metadata */}
-            {call.extracted_data && (
-              <div className="bg-surface border border-border rounded-xl overflow-hidden">
-                <div className="px-5 py-3.5 border-b border-border-subtle">
-                  <span className="text-xs font-semibold text-ink-2 uppercase tracking-wide">Enrichment</span>
-                </div>
-                <div className="p-5 grid grid-cols-2 gap-3">
-                  {Object.entries(call.extracted_data as Record<string, unknown>)
-                    .filter(([, v]) => v != null && v !== '')
-                    .map(([key, value]) => {
-                      const displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
-                      return (
-                        <div key={key}>
-                          <div className="text-[11px] text-ink-3 uppercase tracking-wider mb-0.5">{key.replace(/_/g, ' ')}</div>
-                          <div className="text-sm text-ink truncate" title={displayValue}>{displayValue}</div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
-            )}
+            {/* Llama enrichment */}
+            {call.extracted_data && (() => {
+              const ext = call.extracted_data as Record<string, unknown>;
+              // Pull out coaching notes from Llama separately
+              const llamaCoaching: string[] = (() => {
+                const raw = ext.missed_opportunities;
+                if (Array.isArray(raw)) return raw as string[];
+                if (typeof raw === 'string') {
+                  try { return JSON.parse(raw) as string[]; } catch { return []; }
+                }
+                return [];
+              })();
+              const scalarFields = Object.entries(ext).filter(
+                ([k, v]) => k !== 'missed_opportunities' && k !== 'errors' && v != null && v !== '' && typeof v !== 'object'
+              );
+              return (
+                <>
+                  {llamaCoaching.length > 0 && (
+                    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+                      <div className="px-5 py-3.5 border-b border-border-subtle">
+                        <span className="text-xs font-semibold text-ink-2 uppercase tracking-wide">Coaching Notes · Audio AI</span>
+                      </div>
+                      <ul className="p-5 space-y-2">
+                        {llamaCoaching.map((note, i) => (
+                          <li key={i} className="text-xs text-ink-2 flex items-start gap-2">
+                            <span className="text-ink-3 mt-0.5 shrink-0">→</span>
+                            {note}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {scalarFields.length > 0 && (
+                    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+                      <div className="px-5 py-3.5 border-b border-border-subtle">
+                        <span className="text-xs font-semibold text-ink-2 uppercase tracking-wide">Enrichment · Audio AI</span>
+                      </div>
+                      <div className="p-5 grid grid-cols-2 gap-3">
+                        {scalarFields.map(([key, value]) => (
+                          <div key={key}>
+                            <div className="text-[11px] text-ink-3 uppercase tracking-wider mb-0.5">{key.replace(/_/g, ' ')}</div>
+                            <div className="text-sm text-ink truncate" title={String(value)}>{String(value)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </div>
       </main>

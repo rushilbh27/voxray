@@ -20,6 +20,9 @@ import { FIX_SPECS } from '@/lib/fix-specs';
 import { PromptViewer } from './PromptViewer';
 import { ApplyAllFixesButton } from './ApplyAllFixesButton';
 import { LiveTracker } from '@/app/components/LiveTracker';
+import { ErrorHeatmap, buildHeatmapRows } from '@/app/components/ErrorHeatmap';
+import { OutcomeChart, buildOutcomeData } from '@/app/components/OutcomeChart';
+import { CompareForm } from './CompareForm';
 
 export const revalidate = 60;
 
@@ -55,14 +58,17 @@ const HUMAN_LABELS: Record<string, string> = {
 
 export default async function AgentProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ agentId: string }>;
+  searchParams: Promise<{ compare?: string }>;
 }) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
   const { agentId } = await params;
+  const { compare: compareDate } = await searchParams;
 
   // Resolve agentId → client_name from DB
   const { data: nameRow } = await supabaseAdmin
@@ -74,24 +80,28 @@ export default async function AgentProfilePage({
 
   const clientName = nameRow?.client_name ?? 'Unknown Agent';
 
-  // Parallel fetch: agent prompt, errors, stats, worst calls, eval, velocity, prompt versions
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const twelveWeeksAgo = new Date(Date.now() - 84 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Parallel fetch: agent prompt, errors, stats, worst calls, eval, velocity, prompt versions, heatmap, outcome
   const [
     agent,
     { data: errorFreqRows },
-
     { data: worstCallsRaw },
     { data: evalRows },
     { data: velocityRows },
     { data: pvData },
     { data: fpRows },
     { data: aggRows },
+    { data: heatmapCalls },
+    { data: outcomeCalls },
+    compareResult,
   ] = await Promise.all([
     fetchAgent(agentId),
     supabaseAdmin.rpc('get_error_frequency', {
       p_since: null,
       p_agent: clientName,
     }),
-
     supabaseAdmin
       .from('ultravox_calls')
       .select('call_id, client_name, customer_name, call_errors, error_count, critical_error_count, created_at')
@@ -109,7 +119,29 @@ export default async function AgentProfilePage({
       .select('analysis_status, error_count, critical_error_count', { count: 'exact', head: false })
       .eq('agent_id', agentId)
       .eq('status', 'ended')
-      .limit(5000), // cap at 5k — stat display doesn't need every row
+      .limit(5000),
+    // Heatmap: last 30 days of calls with errors
+    supabaseAdmin
+      .from('ultravox_calls')
+      .select('created_at, call_errors')
+      .eq('agent_id', agentId)
+      .eq('analysis_status', 'complete')
+      .gte('created_at', thirtyDaysAgo)
+      .order('created_at', { ascending: true })
+      .limit(500),
+    // Outcome trend: last 12 weeks
+    supabaseAdmin
+      .from('ultravox_calls')
+      .select('created_at, call_errors')
+      .eq('agent_id', agentId)
+      .eq('analysis_status', 'complete')
+      .gte('created_at', twelveWeeksAgo)
+      .order('created_at', { ascending: true })
+      .limit(1000),
+    // Before/after comparison (only when ?compare= is set)
+    compareDate
+      ? supabaseAdmin.rpc('get_comparison_data', { p_date: compareDate, p_agent: clientName })
+      : Promise.resolve({ data: null, error: null }),
   ]);
 
   const prompt = agent?.systemPrompt ?? '';
@@ -166,6 +198,13 @@ export default async function AgentProfilePage({
 
   const worstCalls = worstCallsRaw ?? [];
   const fpSet = new Set((fpRows ?? []).map((r) => `${r.call_id}::${r.error_type}`));
+
+  // Heatmap + outcome data
+  const heatmapRows = buildHeatmapRows(heatmapCalls ?? []);
+  const outcomeData = buildOutcomeData(outcomeCalls ?? []);
+
+  // Before/after comparison
+  const compareData = compareResult?.data as Array<Record<string, unknown>> | null;
 
   // Collect all fixable error types for "Apply All" button
   const fixableErrors: string[] = [];
@@ -433,6 +472,85 @@ export default async function AgentProfilePage({
               </div>
             </div>
           )}
+        </section>
+
+        {/* Error Heatmap — 30-day calendar */}
+        {heatmapRows.length > 0 && (
+          <section className="mb-10">
+            <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Error Heatmap · Last 30 Days</div>
+            <div className="bg-surface border border-border rounded-xl p-5">
+              <div className="mb-4">
+                <h2 className="text-sm font-semibold text-ink">Which days errors fired · {clientName}</h2>
+                <p className="text-xs text-ink-3 mt-0.5">Each square = one day. Darker = more calls with that error. Patterns reveal systematic issues.</p>
+              </div>
+              <ErrorHeatmap rows={heatmapRows} />
+            </div>
+          </section>
+        )}
+
+        {/* Goal Outcome Trend */}
+        {outcomeData.length > 0 && (
+          <section className="mb-10">
+            <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Call Outcome Trend · 12 Weeks</div>
+            <div className="bg-surface border border-border rounded-xl p-5">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-sm font-semibold text-ink">Success rate over time · {clientName}</h2>
+                  <p className="text-xs text-ink-3 mt-0.5">Success rate drops here signal problems before error count spikes.</p>
+                </div>
+              </div>
+              <OutcomeChart data={outcomeData} />
+            </div>
+          </section>
+        )}
+
+        {/* Before/After Comparison */}
+        <section className="mb-10">
+          <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Before / After Fix Comparison</div>
+          <div className="bg-surface border border-border rounded-xl p-5">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div>
+                <h2 className="text-sm font-semibold text-ink">Error rate change after a prompt fix</h2>
+                <p className="text-xs text-ink-3 mt-0.5">Pick the date you applied a fix to see before/after error counts.</p>
+              </div>
+              <CompareForm agentId={agentId} currentCompare={compareDate} />
+            </div>
+            {compareData && compareData.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                {compareData.map((row) => {
+                  const before = Number(row.before_count ?? 0);
+                  const after = Number(row.after_count ?? 0);
+                  const change = before > 0 ? Math.round(((after - before) / before) * 100) : 0;
+                  const improved = change < 0;
+                  return (
+                    <div key={row.error_type as string} className="bg-surface-2 rounded-lg p-3">
+                      <div className="text-xs font-medium text-ink mb-2">{HUMAN_LABELS[row.error_type as string] ?? row.error_type as string}</div>
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <div className="text-lg font-bold text-ink-2 tabular-nums">{before}</div>
+                          <div className="text-[10px] text-ink-3">before {compareDate}</div>
+                        </div>
+                        <div className="text-ink-3">→</div>
+                        <div>
+                          <div className="text-lg font-bold text-ink tabular-nums">{after}</div>
+                          <div className="text-[10px] text-ink-3">after</div>
+                        </div>
+                        {before > 0 && (
+                          <div className={`ml-auto text-sm font-bold tabular-nums ${improved ? 'text-ok' : 'text-crit'}`}>
+                            {improved ? '' : '+'}{change}%
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : compareDate ? (
+              <div className="text-sm text-ink-3 text-center py-4">No comparison data for {compareDate}. Make sure calls exist both before and after this date.</div>
+            ) : (
+              <div className="text-sm text-ink-3 text-center py-4">Pick a date above to see how a prompt fix changed error rates.</div>
+            )}
+          </div>
         </section>
 
         {/* Prompt Version Chart */}

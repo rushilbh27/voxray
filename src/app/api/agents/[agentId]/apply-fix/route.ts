@@ -150,13 +150,69 @@ export async function POST(
   const { createHash } = await import('crypto');
   const newHash = createHash('sha256').update(newPrompt).digest('hex');
 
+  // ── Trigger re-analysis of last 15 calls to confirm fix worked ───────────
+  // Fire-and-forget: don't block the response. Uses same logic as /reanalyze route.
+  import('@/lib/supabase').then(async ({ supabaseAdmin: db }) => {
+    const { data: recentCalls } = await db
+      .from('ultravox_calls')
+      .select('call_id')
+      .eq('agent_id', agentId)
+      .eq('analysis_status', 'complete')
+      .order('created_at', { ascending: false })
+      .limit(15);
+
+    if (!recentCalls || recentCalls.length === 0) return;
+
+    const callIds = recentCalls.map((c) => c.call_id as string);
+    await db
+      .from('ultravox_calls')
+      .update({ analysis_status: 'pending' })
+      .in('call_id', callIds);
+
+    const { analyzeCall } = await import('@/lib/call-analyzer');
+    const webhookUrl = `${process.env.VOXRAY_URL ?? 'https://voxray.vercel.app'}/api/webhook/transcript`;
+    const concurrency = 2;
+    const queue = [...callIds];
+
+    async function reprocessOne(callId: string) {
+      try {
+        await db.from('ultravox_calls').update({ analysis_status: 'analyzing' }).eq('call_id', callId);
+        const { data: msgs } = await db
+          .from('ultravox_messages')
+          .select('role, text, ordinal')
+          .eq('call_id', callId)
+          .order('ordinal', { ascending: true });
+        if (!msgs || msgs.length < 4) {
+          await db.from('ultravox_calls').update({ analysis_status: 'skipped' }).eq('call_id', callId);
+          return;
+        }
+        const result = await analyzeCall({ callId, agentId, clientName: agentName, messages: msgs, webhookUrl });
+        await db.from('ultravox_calls').update({
+          call_errors: result.analysis,
+          analysis_status: 'complete',
+          error_count: result.analysis.error_count,
+          critical_error_count: result.analysis.critical_error_count,
+          prompt_hash: result.prompt_hash ?? null,
+        }).eq('call_id', callId);
+      } catch {
+        await db.from('ultravox_calls').update({ analysis_status: 'error' }).eq('call_id', callId).then(() => null, () => null);
+      }
+    }
+
+    while (queue.length > 0) {
+      const batch = queue.splice(0, concurrency);
+      await Promise.all(batch.map(reprocessOne));
+    }
+  }).catch(() => {});
+
   return NextResponse.json({
-    ok:            true,
-    agent:         agentName,
-    error_type:    errorType,
+    ok:              true,
+    agent:           agentName,
+    error_type:      errorType,
     applied,
     skipped,
-    new_hash:      newHash,
-    prompt_length: newPrompt.length,
+    new_hash:        newHash,
+    prompt_length:   newPrompt.length,
+    reanalyze_queued: true,
   });
 }

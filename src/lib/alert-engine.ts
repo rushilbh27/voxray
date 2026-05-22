@@ -11,6 +11,8 @@
  *   ALERT_WEBHOOK_URL   — POST JSON to any webhook (Slack, n8n, custom)
  */
 import { supabaseAdmin } from './supabase';
+import { sendTelegram } from './telegram';
+import type { TelegramButton } from './telegram';
 
 export interface AlertRule {
   id: string;
@@ -84,25 +86,10 @@ export interface FiredAlert {
   label: string;
   severity: string;
   agent: string;
+  agent_id?: string;  // for profile page deep-link
   count: number;
   example_call_id: string;
   fired_at: string;
-}
-
-async function sendTelegram(message: string): Promise<void> {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) return;
-
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: message,
-      parse_mode: 'HTML',
-    }),
-  });
 }
 
 async function sendWebhook(payload: FiredAlert): Promise<void> {
@@ -115,8 +102,9 @@ async function sendWebhook(payload: FiredAlert): Promise<void> {
   });
 }
 
-function formatTelegramMessage(alerts: FiredAlert[]): string {
+function formatTelegramAlert(alerts: FiredAlert[]): { text: string; buttons: TelegramButton[] } {
   const severityIcon = (s: string) => s === 'critical' ? '🔴' : s === 'warning' ? '🟡' : 'ℹ️';
+  const base = process.env.VOXRAY_URL ?? 'https://voxray.vercel.app';
 
   const lines = [
     '<b>⚡ Voxray Alert</b>',
@@ -128,10 +116,19 @@ function formatTelegramMessage(alerts: FiredAlert[]): string {
       `   Example: <code>${a.example_call_id.substring(0, 16)}…</code>`
     ),
     '',
-    '→ https://voxray.vercel.app',
   ];
 
-  return lines.join('\n');
+  const buttons: TelegramButton[] = alerts
+    .filter((a, i, arr) => arr.findIndex(x => x.agent_id === a.agent_id) === i) // dedupe by agent
+    .filter((a) => !!a.agent_id)
+    .map((a) => ({ text: `→ ${a.agent} profile`, url: `${base}/dashboard/${a.agent_id}` }));
+
+  // Fallback button if no agent_ids available
+  if (buttons.length === 0) {
+    buttons.push({ text: '→ Open Voxray', url: base });
+  }
+
+  return { text: lines.join('\n'), buttons };
 }
 
 /**
@@ -145,7 +142,7 @@ export async function runAlertCheck(): Promise<FiredAlert[]> {
   // Fetch recently analyzed calls with errors
   const { data: recentCalls } = await supabaseAdmin
     .from('ultravox_calls')
-    .select('call_id, client_name, call_errors, error_count, critical_error_count, created_at, analysis_status')
+    .select('call_id, agent_id, client_name, call_errors, error_count, critical_error_count, created_at, analysis_status')
     .eq('analysis_status', 'complete')
     .gt('created_at', since)
     .gt('error_count', 0)
@@ -178,6 +175,7 @@ export async function runAlertCheck(): Promise<FiredAlert[]> {
             label: rule.label,
             severity: rule.severity,
             agent,
+            agent_id: agentMatches[0].agent_id as string | undefined,
             count: agentMatches.length,
             example_call_id: agentMatches[0].call_id as string,
             fired_at: new Date().toISOString(),
@@ -186,13 +184,13 @@ export async function runAlertCheck(): Promise<FiredAlert[]> {
       }
     } else {
       // Specific error type
-      const typeMatches: Array<{ call_id: string; agent: string }> = [];
+      const typeMatches: Array<{ call_id: string; agent: string; agent_id: string }> = [];
       for (const call of recentCalls ?? []) {
         if (call.created_at < ruleWindow) continue;
         if (rule.agent && call.client_name !== rule.agent) continue;
         const errors = (call.call_errors as { errors?: Array<{ type: string }> } | null)?.errors ?? [];
         if (errors.some((e) => e.type === rule.error_type)) {
-          typeMatches.push({ call_id: call.call_id as string, agent: call.client_name as string });
+          typeMatches.push({ call_id: call.call_id as string, agent: call.client_name as string, agent_id: call.agent_id as string });
         }
       }
 
@@ -210,6 +208,7 @@ export async function runAlertCheck(): Promise<FiredAlert[]> {
               label: rule.label,
               severity: rule.severity,
               agent,
+              agent_id: agentMatches[0].agent_id,
               count: agentMatches.length,
               example_call_id: agentMatches[0].call_id,
               fired_at: new Date().toISOString(),
@@ -239,8 +238,9 @@ export async function runAlertCheck(): Promise<FiredAlert[]> {
   const unacked = deduped.filter((a) => !ackedKeys.has(`${a.rule_id}::${a.agent}`));
 
   if (unacked.length > 0) {
+    const { text, buttons } = formatTelegramAlert(unacked);
     await Promise.allSettled([
-      sendTelegram(formatTelegramMessage(unacked)),
+      sendTelegram(text, buttons),
       ...unacked.map(sendWebhook),
     ]);
   }
