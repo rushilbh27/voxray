@@ -103,30 +103,40 @@ export default async function Dashboard({
     top_error_type:   (row.top_error_type as string) ?? null,
   }));
 
-  // Build agent_id lookup (scale-safe)
-  const agentIdMap = new Map<string, string>();
+    // Static fallback: known client_name → agent UUID (for agents whose calls have agent_id = null in DB)
+  const KNOWN_AGENT_IDS: Record<string, string> = {
+    'Sales AI':                        '65ae3d7d-5a1f-4880-89f4-1ce690efae89',
+    'Debt Collector':                  '52db715f-fc68-4265-a354-7f64a27cd3b9',
+    'Cold Outreach':                   '74c435db-0382-45d4-8f84-65343c0dde5f',
+    'NECTOR Demo':                     '428d7591-3ba5-4b60-8aa5-a92012d12451',
+    'Davansh_Investment_inbound':      '0a5b5ccc-4f75-456c-94c8-f9e7293f9d81',
+    'Edifice_Properties_inbound':      'bfea3820-a447-4444-bd41-53ff919bbfe3',
+    'Ramco_Gas_inbound':               '5da7bc3e-e653-4dd6-9402-bbe9b5b3a7b1',
+    'Real_Estate_AI_Sales_Agent':      'efecb97c-2937-4507-a550-8db5e8882c82',
+    'Debt_Collection_2':               '4be98966-7c89-4149-8f10-e2ac16291f66',
+    'Follow_Up_Debt_Collection_Bot':   '3983f5c0-4a95-42e3-a95a-9dbe57e11c78',
+    'Debt_Collection_Welcome-Bot':     '2dfe90c6-569f-49e0-84f4-e67d9e770255',
+  };
+
+  // Build agent_id lookup — DB data first, static map as fallback
+  const agentIdMap = new Map<string, string>(Object.entries(KNOWN_AGENT_IDS));
   for (const r of (agentIdRows ?? []) as Array<Record<string, unknown>>) {
     const name = r.client_name as string;
     const aid = r.agent_id as string;
-    if (name && aid && !agentIdMap.has(name)) agentIdMap.set(name, aid);
+    if (name && aid) agentIdMap.set(name, aid); // DB data wins over static
   }
 
-  // Count calls per agent from agentIdRows (for agents not in RPC results)
-  const callsPerAgent = new Map<string, number>();
-  for (const r of (agentIdRows ?? []) as Array<Record<string, unknown>>) {
-    const name = r.client_name as string;
-    if (name) callsPerAgent.set(name, (callsPerAgent.get(name) ?? 0) + 1);
-  }
-
-  // Ensure ALL agents with calls appear in the grid, even if they have 0 errors.
-  // get_agent_error_summary() may only return agents with error data.
+  // Ensure ALL agents appear in the grid using clientRows (has every client_name regardless of agent_id).
+  // get_agent_error_summary() only returns agents with error data, so healthy agents get missed.
   const summaryNames = new Set(agentSummaries.map((s) => s.client_name));
-  for (const [name] of callsPerAgent) {
-    if (!summaryNames.has(name)) {
+  for (const [name, count] of (clientRows as Array<Record<string, unknown>> ?? []).map(
+    (r) => [r.client_name as string, Number(r.count)] as [string, number]
+  )) {
+    if (name && !summaryNames.has(name)) {
       summaryNames.add(name);
       agentSummaries.push({
         client_name: name,
-        total_calls: callsPerAgent.get(name) ?? 0,
+        total_calls: count,
         analyzed_calls: 0,
         calls_with_errors: 0,
         error_rate: 0,
