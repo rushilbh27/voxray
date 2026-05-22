@@ -1,0 +1,779 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - link "V Voxray" [ref=e5] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=e6]: V
+          - generic [ref=e7]: Voxray
+        - generic [ref=e9]: monitoring
+        - button "Sign out" [ref=e12] [cursor=pointer]
+    - main [ref=e13]:
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - generic [ref=e16]: Total Calls
+          - generic [ref=e17]: 1,846
+        - generic [ref=e18]:
+          - generic [ref=e19]: Success Rate
+          - generic [ref=e20]: 75%
+        - generic [ref=e21]:
+          - generic [ref=e22]: Error Rate
+          - generic [ref=e23]: 54%
+        - generic [ref=e24]:
+          - generic [ref=e25]: Avg Duration
+          - generic [ref=e26]: 1m 18s
+        - generic [ref=e27]:
+          - generic [ref=e28]: Total Cost
+          - generic [ref=e29]: $85.27
+        - generic [ref=e30]:
+          - generic [ref=e31]: Analyzed
+          - generic [ref=e32]: 864 (47%)
+        - generic [ref=e33]:
+          - generic [ref=e34]: Live Now
+          - generic [ref=e35]: "0"
+      - generic [ref=e36]:
+        - generic [ref=e37]: AI Pipeline · Haiku 4.5 · Last 24h
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - generic [ref=e40]: p50 Latency
+            - generic [ref=e41]: 1ms
+          - generic [ref=e42]:
+            - generic [ref=e43]: p95 Latency
+            - generic [ref=e44]: 9.0s
+          - generic [ref=e45]:
+            - generic [ref=e46]: Cost Today
+            - generic [ref=e47]: $0.3085
+          - generic [ref=e48]:
+            - generic [ref=e49]: Success Rate
+            - generic [ref=e50]: 8%
+          - generic [ref=e51]:
+            - generic [ref=e52]: Analyses/Day
+            - generic [ref=e53]: "1040"
+      - generic [ref=e54]:
+        - generic [ref=e56]:
+          - generic [ref=e57]: Agent Intelligence
+          - heading "10 agentsClick an agent for errors, patches & fixes" [level=2] [ref=e58]:
+            - text: "10"
+            - generic [ref=e59]: agents
+            - text: Click an agent for errors, patches & fixes
+        - generic [ref=e60]:
+          - 'link "Sales AI Top: accepted garbled audio 233 critical Calls 1174 Error Rate 49.6% Errors 289 583 / 1174 analyzedView errors →" [ref=e61] [cursor=pointer]':
+            - /url: /dashboard/65ae3d7d-5a1f-4880-89f4-1ce690efae89
+            - generic [ref=e62]:
+              - generic [ref=e63]:
+                - heading "Sales AI" [level=3] [ref=e64]
+                - generic [ref=e65]: "Top: accepted garbled audio"
+              - generic [ref=e66]: 233 critical
+            - generic [ref=e67]:
+              - generic [ref=e68]:
+                - generic [ref=e69]: Calls
+                - generic [ref=e70]: "1174"
+              - generic [ref=e71]:
+                - generic [ref=e72]: Error Rate
+                - generic [ref=e73]: 49.6%
+              - generic [ref=e74]:
+                - generic [ref=e75]: Errors
+                - generic [ref=e76]: "289"
+            - generic [ref=e77]: 583 / 1174 analyzedView errors →
+          - 'link "Debt Collector Top: no product context 107 critical Calls 437 Error Rate 65.2% Errors 86 132 / 437 analyzedView errors →" [ref=e78] [cursor=pointer]':
+            - /url: /dashboard/52db715f-fc68-4265-a354-7f64a27cd3b9
+            - generic [ref=e79]:
+              - generic [ref=e80]:
+                - heading "Debt Collector" [level=3] [ref=e81]
+                - generic [ref=e82]: "Top: no product context"
+              - generic [ref=e83]: 107 critical
+            - generic [ref=e84]:
+              - generic [ref=e85]:
+                - generic [ref=e86]: Calls
+                - generic [ref=e87]: "437"
+              - generic [ref=e88]:
+                - generic [ref=e89]: Error Rate
+                - generic [ref=e90]: 65.2%
+              - generic [ref=e91]:
+                - generic [ref=e92]: Errors
+                - generic [ref=e93]: "86"
+            - generic [ref=e94]: 132 / 437 analyzedView errors →
+          - 'link "Shell Gas Uganda Top: no save answers 36 critical Calls 54 Error Rate 64.6% Errors 31 48 / 54 analyzedView errors →" [ref=e95] [cursor=pointer]':
+            - /url: "#"
+            - generic [ref=e96]:
+              - generic [ref=e97]:
+                - heading "Shell Gas Uganda" [level=3] [ref=e98]
+                - generic [ref=e99]: "Top: no save answers"
+              - generic [ref=e100]: 36 critical
+            - generic [ref=e101]:
+              - generic [ref=e102]:
+                - generic [ref=e103]: Calls
+                - generic [ref=e104]: "54"
+              - generic [ref=e105]:
+                - generic [ref=e106]: Error Rate
+                - generic [ref=e107]: 64.6%
+              - generic [ref=e108]:
+                - generic [ref=e109]: Errors
+                - generic [ref=e110]: "31"
+            - generic [ref=e111]: 48 / 54 analyzedView errors →
+          - 'link "Cold Outreach Top: accepted garbled audio 16 critical Calls 39 Error Rate 59% Errors 23 39 / 39 analyzedView errors →" [ref=e112] [cursor=pointer]':
+            - /url: /dashboard/74c435db-0382-45d4-8f84-65343c0dde5f
+            - generic [ref=e113]:
+              - generic [ref=e114]:
+                - heading "Cold Outreach" [level=3] [ref=e115]
+                - generic [ref=e116]: "Top: accepted garbled audio"
+              - generic [ref=e117]: 16 critical
+            - generic [ref=e118]:
+              - generic [ref=e119]:
+                - generic [ref=e120]: Calls
+                - generic [ref=e121]: "39"
+              - generic [ref=e122]:
+                - generic [ref=e123]: Error Rate
+                - generic [ref=e124]: 59%
+              - generic [ref=e125]:
+                - generic [ref=e126]: Errors
+                - generic [ref=e127]: "23"
+            - generic [ref=e128]: 39 / 39 analyzedView errors →
+          - 'link "NECTOR Demo Top: wrong info 9 critical Calls 28 Error Rate 72.2% Errors 13 18 / 28 analyzedView errors →" [ref=e129] [cursor=pointer]':
+            - /url: /dashboard/428d7591-3ba5-4b60-8aa5-a92012d12451
+            - generic [ref=e130]:
+              - generic [ref=e131]:
+                - heading "NECTOR Demo" [level=3] [ref=e132]
+                - generic [ref=e133]: "Top: wrong info"
+              - generic [ref=e134]: 9 critical
+            - generic [ref=e135]:
+              - generic [ref=e136]:
+                - generic [ref=e137]: Calls
+                - generic [ref=e138]: "28"
+              - generic [ref=e139]:
+                - generic [ref=e140]: Error Rate
+                - generic [ref=e141]: 72.2%
+              - generic [ref=e142]:
+                - generic [ref=e143]: Errors
+                - generic [ref=e144]: "13"
+            - generic [ref=e145]: 18 / 28 analyzedView errors →
+          - 'link "Unknown Top: accepted garbled audio 10 critical Calls 92 Error Rate 52.2% Errors 12 23 / 92 analyzedView errors →" [ref=e146] [cursor=pointer]':
+            - /url: "#"
+            - generic [ref=e147]:
+              - generic [ref=e148]:
+                - heading "Unknown" [level=3] [ref=e149]
+                - generic [ref=e150]: "Top: accepted garbled audio"
+              - generic [ref=e151]: 10 critical
+            - generic [ref=e152]:
+              - generic [ref=e153]:
+                - generic [ref=e154]: Calls
+                - generic [ref=e155]: "92"
+              - generic [ref=e156]:
+                - generic [ref=e157]: Error Rate
+                - generic [ref=e158]: 52.2%
+              - generic [ref=e159]:
+                - generic [ref=e160]: Errors
+                - generic [ref=e161]: "12"
+            - generic [ref=e162]: 23 / 92 analyzedView errors →
+          - 'link "Uganda Communications Commission Top: wrong call type 10 critical Calls 10 Error Rate 90% Errors 9 10 / 10 analyzedView errors →" [ref=e163] [cursor=pointer]':
+            - /url: "#"
+            - generic [ref=e164]:
+              - generic [ref=e165]:
+                - heading "Uganda Communications Commission" [level=3] [ref=e166]
+                - generic [ref=e167]: "Top: wrong call type"
+              - generic [ref=e168]: 10 critical
+            - generic [ref=e169]:
+              - generic [ref=e170]:
+                - generic [ref=e171]: Calls
+                - generic [ref=e172]: "10"
+              - generic [ref=e173]:
+                - generic [ref=e174]: Error Rate
+                - generic [ref=e175]: 90%
+              - generic [ref=e176]:
+                - generic [ref=e177]: Errors
+                - generic [ref=e178]: "9"
+            - generic [ref=e179]: 10 / 10 analyzedView errors →
+          - 'link "Edifice_Properties_inbound Top: stacked questions 1 critical Calls 10 Error Rate 44.4% Errors 4 9 / 10 analyzedView errors →" [ref=e180] [cursor=pointer]':
+            - /url: /dashboard/bfea3820-a447-4444-bd41-53ff919bbfe3
+            - generic [ref=e181]:
+              - generic [ref=e182]:
+                - heading "Edifice_Properties_inbound" [level=3] [ref=e183]
+                - generic [ref=e184]: "Top: stacked questions"
+              - generic [ref=e185]: 1 critical
+            - generic [ref=e186]:
+              - generic [ref=e187]:
+                - generic [ref=e188]: Calls
+                - generic [ref=e189]: "10"
+              - generic [ref=e190]:
+                - generic [ref=e191]: Error Rate
+                - generic [ref=e192]: 44.4%
+              - generic [ref=e193]:
+                - generic [ref=e194]: Errors
+                - generic [ref=e195]: "4"
+            - generic [ref=e196]: 9 / 10 analyzedView errors →
+          - 'link "Davansh_Investment_inbound Top: wrong call type 2 critical Calls 1 Error Rate 100% Errors 1 1 / 1 analyzedView errors →" [ref=e197] [cursor=pointer]':
+            - /url: /dashboard/0a5b5ccc-4f75-456c-94c8-f9e7293f9d81
+            - generic [ref=e198]:
+              - generic [ref=e199]:
+                - heading "Davansh_Investment_inbound" [level=3] [ref=e200]
+                - generic [ref=e201]: "Top: wrong call type"
+              - generic [ref=e202]: 2 critical
+            - generic [ref=e203]:
+              - generic [ref=e204]:
+                - generic [ref=e205]: Calls
+                - generic [ref=e206]: "1"
+              - generic [ref=e207]:
+                - generic [ref=e208]: Error Rate
+                - generic [ref=e209]: 100%
+              - generic [ref=e210]:
+                - generic [ref=e211]: Errors
+                - generic [ref=e212]: "1"
+            - generic [ref=e213]: 1 / 1 analyzedView errors →
+          - 'link "Acme Corp Top: accepted garbled audio 1 critical Calls 1 Error Rate 100% Errors 1 1 / 1 analyzedView errors →" [ref=e214] [cursor=pointer]':
+            - /url: "#"
+            - generic [ref=e215]:
+              - generic [ref=e216]:
+                - heading "Acme Corp" [level=3] [ref=e217]
+                - generic [ref=e218]: "Top: accepted garbled audio"
+              - generic [ref=e219]: 1 critical
+            - generic [ref=e220]:
+              - generic [ref=e221]:
+                - generic [ref=e222]: Calls
+                - generic [ref=e223]: "1"
+              - generic [ref=e224]:
+                - generic [ref=e225]: Error Rate
+                - generic [ref=e226]: 100%
+              - generic [ref=e227]:
+                - generic [ref=e228]: Errors
+                - generic [ref=e229]: "1"
+            - generic [ref=e230]: 1 / 1 analyzedView errors →
+      - generic [ref=e231]:
+        - generic [ref=e232]: Error Rate Trend
+        - generic [ref=e233]:
+          - generic [ref=e234]:
+            - heading "Weekly error rate per agent" [level=2] [ref=e235]
+            - generic [ref=e236]: Last 12 weeks
+          - generic [ref=e238]:
+            - list [ref=e240]:
+              - listitem [ref=e241]:
+                - img "Acme Corp legend icon" [ref=e242]
+                - text: Acme Corp
+              - listitem [ref=e244]:
+                - img "Cold Outreach legend icon" [ref=e245]
+                - text: Cold Outreach
+              - listitem [ref=e247]:
+                - img "Davansh_Investment_inbound legend icon" [ref=e248]
+                - text: Davansh_Investment_inbound
+              - listitem [ref=e250]:
+                - img "Debt Collector legend icon" [ref=e251]
+                - text: Debt Collector
+              - listitem [ref=e253]:
+                - img "Edifice_Properties_inbound legend icon" [ref=e254]
+                - text: Edifice_Properties_inbound
+              - listitem [ref=e256]:
+                - img "Sales AI legend icon" [ref=e257]
+                - text: Sales AI
+              - listitem [ref=e259]:
+                - img "Shell Gas Uganda legend icon" [ref=e260]
+                - text: Shell Gas Uganda
+              - listitem [ref=e262]:
+                - img "Uganda Communications Commission legend icon" [ref=e263]
+                - text: Uganda Communications Commission
+              - listitem [ref=e265]:
+                - img "Unknown legend icon" [ref=e266]
+                - text: Unknown
+            - application [ref=e268]:
+              - generic [ref=e308]:
+                - generic [ref=e309]:
+                  - generic [ref=e311]: Mar 5
+                  - generic [ref=e313]: Mar 12
+                  - generic [ref=e315]: Mar 19
+                  - generic [ref=e317]: Mar 26
+                  - generic [ref=e319]: Apr 2
+                  - generic [ref=e321]: Apr 9
+                  - generic [ref=e323]: Apr 16
+                  - generic [ref=e325]: Apr 23
+                  - generic [ref=e327]: Apr 30
+                  - generic [ref=e329]: May 7
+                  - generic [ref=e331]: May 14
+                  - generic [ref=e333]: May 21
+                - generic [ref=e334]:
+                  - generic [ref=e336]: 0%
+                  - generic [ref=e338]: 25%
+                  - generic [ref=e340]: 50%
+                  - generic [ref=e342]: 75%
+                  - generic [ref=e344]: 100%
+      - generic [ref=e345]:
+        - generic [ref=e346]:
+          - generic [ref=e347]:
+            - generic [ref=e348]: Call Log
+            - heading "All Calls1,846" [level=2] [ref=e349]
+          - generic [ref=e350]:
+            - link "All (1846)" [ref=e351] [cursor=pointer]:
+              - /url: /dashboard?page=1
+            - link "Sales AI (1174)" [ref=e352] [cursor=pointer]:
+              - /url: /dashboard?page=1&client=Sales%20AI
+            - link "Debt Collector (437)" [ref=e353] [cursor=pointer]:
+              - /url: /dashboard?page=1&client=Debt%20Collector
+            - link "Unknown (92)" [ref=e354] [cursor=pointer]:
+              - /url: /dashboard?page=1&client=Unknown
+            - link "Shell Gas Uganda (54)" [ref=e355] [cursor=pointer]:
+              - /url: /dashboard?page=1&client=Shell%20Gas%20Uganda
+            - link "Cold Outreach (39)" [ref=e356] [cursor=pointer]:
+              - /url: /dashboard?page=1&client=Cold%20Outreach
+            - link "NECTOR Demo (28)" [ref=e357] [cursor=pointer]:
+              - /url: /dashboard?page=1&client=NECTOR%20Demo
+        - generic [ref=e358]:
+          - generic [ref=e359]:
+            - generic [ref=e360]: Agent / ID
+            - generic [ref=e361]: Status
+            - generic [ref=e362]: Duration
+            - generic [ref=e363]: Errors
+            - generic [ref=e364]: Date
+          - generic [ref=e365]:
+            - link "Shell Gas Uganda 47cc7512-62c9-43a5-8d68-780e7a51e535 ended 0:36 2c / 3 22 May" [ref=e366] [cursor=pointer]:
+              - /url: /calls/47cc7512-62c9-43a5-8d68-780e7a51e535
+              - generic [ref=e367]:
+                - generic [ref=e368]: Shell Gas Uganda
+                - generic [ref=e369]: 47cc7512-62c9-43a5-8d68-780e7a51e535
+              - generic [ref=e371]: ended
+              - generic [ref=e372]: 0:36
+              - generic [ref=e374]: 2c / 3
+              - generic [ref=e375]: 22 May
+            - link "Cold Outreach bc66a918-006d-4b89-8802-c6648109bac1 ended 3:30 3 22 May" [ref=e376] [cursor=pointer]:
+              - /url: /calls/bc66a918-006d-4b89-8802-c6648109bac1
+              - generic [ref=e377]:
+                - generic [ref=e378]: Cold Outreach
+                - generic [ref=e379]: bc66a918-006d-4b89-8802-c6648109bac1
+              - generic [ref=e381]: ended
+              - generic [ref=e382]: 3:30
+              - generic [ref=e383]: "3"
+              - generic [ref=e384]: 22 May
+            - link "Shell Gas Uganda ae25d21e-3694-4e2c-a22f-83cb61a8d0de ended 0:00 — 22 May" [ref=e385] [cursor=pointer]:
+              - /url: /calls/ae25d21e-3694-4e2c-a22f-83cb61a8d0de
+              - generic [ref=e386]:
+                - generic [ref=e387]: Shell Gas Uganda
+                - generic [ref=e388]: ae25d21e-3694-4e2c-a22f-83cb61a8d0de
+              - generic [ref=e390]: ended
+              - generic [ref=e391]: 0:00
+              - generic [ref=e392]: —
+              - generic [ref=e393]: 22 May
+            - link "Sales AI eaeabe25-5804-404c-98ea-170ad288b715 ended 1:42 1c / 3 22 May" [ref=e394] [cursor=pointer]:
+              - /url: /calls/eaeabe25-5804-404c-98ea-170ad288b715
+              - generic [ref=e395]:
+                - generic [ref=e396]: Sales AI
+                - generic [ref=e397]: eaeabe25-5804-404c-98ea-170ad288b715
+              - generic [ref=e399]: ended
+              - generic [ref=e400]: 1:42
+              - generic [ref=e402]: 1c / 3
+              - generic [ref=e403]: 22 May
+            - link "Shell Gas Uganda 6b63b6e4-3d19-46b3-878f-1eef017f5e64 ended 0:24 ✓ 22 May" [ref=e404] [cursor=pointer]:
+              - /url: /calls/6b63b6e4-3d19-46b3-878f-1eef017f5e64
+              - generic [ref=e405]:
+                - generic [ref=e406]: Shell Gas Uganda
+                - generic [ref=e407]: 6b63b6e4-3d19-46b3-878f-1eef017f5e64
+              - generic [ref=e409]: ended
+              - generic [ref=e410]: 0:24
+              - generic [ref=e411]: ✓
+              - generic [ref=e412]: 22 May
+            - link "Shell Gas Uganda c51e4fb3-8c0d-46dd-a670-b47dfdb9f267 ended 0:48 1c / 1 22 May" [ref=e413] [cursor=pointer]:
+              - /url: /calls/c51e4fb3-8c0d-46dd-a670-b47dfdb9f267
+              - generic [ref=e414]:
+                - generic [ref=e415]: Shell Gas Uganda
+                - generic [ref=e416]: c51e4fb3-8c0d-46dd-a670-b47dfdb9f267
+              - generic [ref=e418]: ended
+              - generic [ref=e419]: 0:48
+              - generic [ref=e421]: 1c / 1
+              - generic [ref=e422]: 22 May
+            - link "Shell Gas Uganda a171953e-a698-4dfc-8367-ae726869ebb6 ended 0:24 1 22 May" [ref=e423] [cursor=pointer]:
+              - /url: /calls/a171953e-a698-4dfc-8367-ae726869ebb6
+              - generic [ref=e424]:
+                - generic [ref=e425]: Shell Gas Uganda
+                - generic [ref=e426]: a171953e-a698-4dfc-8367-ae726869ebb6
+              - generic [ref=e428]: ended
+              - generic [ref=e429]: 0:24
+              - generic [ref=e430]: "1"
+              - generic [ref=e431]: 22 May
+            - link "Shell Gas Uganda aa32ec29-9ffd-4c59-a693-c701efffbc49 ended 0:12 pending 22 May" [ref=e432] [cursor=pointer]:
+              - /url: /calls/aa32ec29-9ffd-4c59-a693-c701efffbc49
+              - generic [ref=e433]:
+                - generic [ref=e434]: Shell Gas Uganda
+                - generic [ref=e435]: aa32ec29-9ffd-4c59-a693-c701efffbc49
+              - generic [ref=e437]: ended
+              - generic [ref=e438]: 0:12
+              - generic [ref=e439]: pending
+              - generic [ref=e440]: 22 May
+            - link "Shell Gas Uganda befe2dfb-35b9-4fea-bd1a-b988c5e153af ended 0:48 1c / 1 22 May" [ref=e441] [cursor=pointer]:
+              - /url: /calls/befe2dfb-35b9-4fea-bd1a-b988c5e153af
+              - generic [ref=e442]:
+                - generic [ref=e443]: Shell Gas Uganda
+                - generic [ref=e444]: befe2dfb-35b9-4fea-bd1a-b988c5e153af
+              - generic [ref=e446]: ended
+              - generic [ref=e447]: 0:48
+              - generic [ref=e449]: 1c / 1
+              - generic [ref=e450]: 22 May
+            - link "Shell Gas Uganda cf5c66d1-d0d3-4db5-9476-460ebb2f1fee ended 0:00 — 22 May" [ref=e451] [cursor=pointer]:
+              - /url: /calls/cf5c66d1-d0d3-4db5-9476-460ebb2f1fee
+              - generic [ref=e452]:
+                - generic [ref=e453]: Shell Gas Uganda
+                - generic [ref=e454]: cf5c66d1-d0d3-4db5-9476-460ebb2f1fee
+              - generic [ref=e456]: ended
+              - generic [ref=e457]: 0:00
+              - generic [ref=e458]: —
+              - generic [ref=e459]: 22 May
+            - link "Shell Gas Uganda aa98c052-a3a5-41bf-b2ec-4deed34bec38 ended 0:12 pending 22 May" [ref=e460] [cursor=pointer]:
+              - /url: /calls/aa98c052-a3a5-41bf-b2ec-4deed34bec38
+              - generic [ref=e461]:
+                - generic [ref=e462]: Shell Gas Uganda
+                - generic [ref=e463]: aa98c052-a3a5-41bf-b2ec-4deed34bec38
+              - generic [ref=e465]: ended
+              - generic [ref=e466]: 0:12
+              - generic [ref=e467]: pending
+              - generic [ref=e468]: 22 May
+            - link "Shell Gas Uganda 082a07bf-e064-498c-9b07-513f4477e57a ended 0:48 1c / 3 22 May" [ref=e469] [cursor=pointer]:
+              - /url: /calls/082a07bf-e064-498c-9b07-513f4477e57a
+              - generic [ref=e470]:
+                - generic [ref=e471]: Shell Gas Uganda
+                - generic [ref=e472]: 082a07bf-e064-498c-9b07-513f4477e57a
+              - generic [ref=e474]: ended
+              - generic [ref=e475]: 0:48
+              - generic [ref=e477]: 1c / 3
+              - generic [ref=e478]: 22 May
+            - link "Debt Collector b602ed46-c906-49ce-8601-a5178ff0f258 ended 1:18 2c / 3 22 May" [ref=e479] [cursor=pointer]:
+              - /url: /calls/b602ed46-c906-49ce-8601-a5178ff0f258
+              - generic [ref=e480]:
+                - generic [ref=e481]: Debt Collector
+                - generic [ref=e482]: b602ed46-c906-49ce-8601-a5178ff0f258
+              - generic [ref=e484]: ended
+              - generic [ref=e485]: 1:18
+              - generic [ref=e487]: 2c / 3
+              - generic [ref=e488]: 22 May
+            - link "Debt Collector e30c94b2-6183-464a-8193-01ba0a64fdba ended 0:24 2c / 2 22 May" [ref=e489] [cursor=pointer]:
+              - /url: /calls/e30c94b2-6183-464a-8193-01ba0a64fdba
+              - generic [ref=e490]:
+                - generic [ref=e491]: Debt Collector
+                - generic [ref=e492]: e30c94b2-6183-464a-8193-01ba0a64fdba
+              - generic [ref=e494]: ended
+              - generic [ref=e495]: 0:24
+              - generic [ref=e497]: 2c / 2
+              - generic [ref=e498]: 22 May
+            - link "Debt Collector cb5d0b7a-6fcd-4f52-9d9b-faa426579fe7 ended 0:00 — 22 May" [ref=e499] [cursor=pointer]:
+              - /url: /calls/cb5d0b7a-6fcd-4f52-9d9b-faa426579fe7
+              - generic [ref=e500]:
+                - generic [ref=e501]: Debt Collector
+                - generic [ref=e502]: cb5d0b7a-6fcd-4f52-9d9b-faa426579fe7
+              - generic [ref=e504]: ended
+              - generic [ref=e505]: 0:00
+              - generic [ref=e506]: —
+              - generic [ref=e507]: 22 May
+            - link "Debt Collector b4decbba-280d-43a0-909b-77321ccbb09c ended 0:00 — 22 May" [ref=e508] [cursor=pointer]:
+              - /url: /calls/b4decbba-280d-43a0-909b-77321ccbb09c
+              - generic [ref=e509]:
+                - generic [ref=e510]: Debt Collector
+                - generic [ref=e511]: b4decbba-280d-43a0-909b-77321ccbb09c
+              - generic [ref=e513]: ended
+              - generic [ref=e514]: 0:00
+              - generic [ref=e515]: —
+              - generic [ref=e516]: 22 May
+            - link "Debt Collector e1415105-9da2-4629-b336-444d03c161d8 ended 0:06 pending 22 May" [ref=e517] [cursor=pointer]:
+              - /url: /calls/e1415105-9da2-4629-b336-444d03c161d8
+              - generic [ref=e518]:
+                - generic [ref=e519]: Debt Collector
+                - generic [ref=e520]: e1415105-9da2-4629-b336-444d03c161d8
+              - generic [ref=e522]: ended
+              - generic [ref=e523]: 0:06
+              - generic [ref=e524]: pending
+              - generic [ref=e525]: 22 May
+            - link "Debt Collector e1872514-c83e-402e-a851-c7b91ea201c3 ended 0:06 pending 22 May" [ref=e526] [cursor=pointer]:
+              - /url: /calls/e1872514-c83e-402e-a851-c7b91ea201c3
+              - generic [ref=e527]:
+                - generic [ref=e528]: Debt Collector
+                - generic [ref=e529]: e1872514-c83e-402e-a851-c7b91ea201c3
+              - generic [ref=e531]: ended
+              - generic [ref=e532]: 0:06
+              - generic [ref=e533]: pending
+              - generic [ref=e534]: 22 May
+            - link "Sales AI 5e780908-666b-45f1-8512-b8070be2a8df ended 1:00 1c / 3 21 May" [ref=e535] [cursor=pointer]:
+              - /url: /calls/5e780908-666b-45f1-8512-b8070be2a8df
+              - generic [ref=e536]:
+                - generic [ref=e537]: Sales AI
+                - generic [ref=e538]: 5e780908-666b-45f1-8512-b8070be2a8df
+              - generic [ref=e540]: ended
+              - generic [ref=e541]: 1:00
+              - generic [ref=e543]: 1c / 3
+              - generic [ref=e544]: 21 May
+            - link "Sales AI 3a812808-c8d2-4025-9830-46dd730dc91b ended 0:30 ✓ 21 May" [ref=e545] [cursor=pointer]:
+              - /url: /calls/3a812808-c8d2-4025-9830-46dd730dc91b
+              - generic [ref=e546]:
+                - generic [ref=e547]: Sales AI
+                - generic [ref=e548]: 3a812808-c8d2-4025-9830-46dd730dc91b
+              - generic [ref=e550]: ended
+              - generic [ref=e551]: 0:30
+              - generic [ref=e552]: ✓
+              - generic [ref=e553]: 21 May
+            - link "Sales AI ef23b7d5-4721-4797-8c94-39c7a9a1a226 ended 3:48 4c / 5 21 May" [ref=e554] [cursor=pointer]:
+              - /url: /calls/ef23b7d5-4721-4797-8c94-39c7a9a1a226
+              - generic [ref=e555]:
+                - generic [ref=e556]: Sales AI
+                - generic [ref=e557]: ef23b7d5-4721-4797-8c94-39c7a9a1a226
+              - generic [ref=e559]: ended
+              - generic [ref=e560]: 3:48
+              - generic [ref=e562]: 4c / 5
+              - generic [ref=e563]: 21 May
+            - link "Sales AI 95a21049-6d80-47ec-bc7c-f75afed3773f ended 2:54 2c / 3 21 May" [ref=e564] [cursor=pointer]:
+              - /url: /calls/95a21049-6d80-47ec-bc7c-f75afed3773f
+              - generic [ref=e565]:
+                - generic [ref=e566]: Sales AI
+                - generic [ref=e567]: 95a21049-6d80-47ec-bc7c-f75afed3773f
+              - generic [ref=e569]: ended
+              - generic [ref=e570]: 2:54
+              - generic [ref=e572]: 2c / 3
+              - generic [ref=e573]: 21 May
+            - link "Sales AI 70a43242-5357-4261-abc0-2a0a8ac9830e ended 0:54 ✓ 21 May" [ref=e574] [cursor=pointer]:
+              - /url: /calls/70a43242-5357-4261-abc0-2a0a8ac9830e
+              - generic [ref=e575]:
+                - generic [ref=e576]: Sales AI
+                - generic [ref=e577]: 70a43242-5357-4261-abc0-2a0a8ac9830e
+              - generic [ref=e579]: ended
+              - generic [ref=e580]: 0:54
+              - generic [ref=e581]: ✓
+              - generic [ref=e582]: 21 May
+            - link "Sales AI e896854e-65d7-44af-a532-867ffc3ce057 ended 3:54 3 21 May" [ref=e583] [cursor=pointer]:
+              - /url: /calls/e896854e-65d7-44af-a532-867ffc3ce057
+              - generic [ref=e584]:
+                - generic [ref=e585]: Sales AI
+                - generic [ref=e586]: e896854e-65d7-44af-a532-867ffc3ce057
+              - generic [ref=e588]: ended
+              - generic [ref=e589]: 3:54
+              - generic [ref=e590]: "3"
+              - generic [ref=e591]: 21 May
+            - link "Shell Gas Uganda d9dc42a4-26ae-4244-a9cc-ba253f4fa4e3 ended 0:12 pending 21 May" [ref=e592] [cursor=pointer]:
+              - /url: /calls/d9dc42a4-26ae-4244-a9cc-ba253f4fa4e3
+              - generic [ref=e593]:
+                - generic [ref=e594]: Shell Gas Uganda
+                - generic [ref=e595]: d9dc42a4-26ae-4244-a9cc-ba253f4fa4e3
+              - generic [ref=e597]: ended
+              - generic [ref=e598]: 0:12
+              - generic [ref=e599]: pending
+              - generic [ref=e600]: 21 May
+            - link "Debt Collector 8ddfd6f5-caf4-4fb0-84bf-cabc1ea1c429 ended 0:06 pending 21 May" [ref=e601] [cursor=pointer]:
+              - /url: /calls/8ddfd6f5-caf4-4fb0-84bf-cabc1ea1c429
+              - generic [ref=e602]:
+                - generic [ref=e603]: Debt Collector
+                - generic [ref=e604]: 8ddfd6f5-caf4-4fb0-84bf-cabc1ea1c429
+              - generic [ref=e606]: ended
+              - generic [ref=e607]: 0:06
+              - generic [ref=e608]: pending
+              - generic [ref=e609]: 21 May
+            - link "Debt Collector 294ab57d-5a49-4c59-a7ea-9976632a9196 ended 0:12 pending 21 May" [ref=e610] [cursor=pointer]:
+              - /url: /calls/294ab57d-5a49-4c59-a7ea-9976632a9196
+              - generic [ref=e611]:
+                - generic [ref=e612]: Debt Collector
+                - generic [ref=e613]: 294ab57d-5a49-4c59-a7ea-9976632a9196
+              - generic [ref=e615]: ended
+              - generic [ref=e616]: 0:12
+              - generic [ref=e617]: pending
+              - generic [ref=e618]: 21 May
+            - link "Debt Collector da45775d-9839-490f-89d5-5c98dd23adb8 ended 0:06 pending 21 May" [ref=e619] [cursor=pointer]:
+              - /url: /calls/da45775d-9839-490f-89d5-5c98dd23adb8
+              - generic [ref=e620]:
+                - generic [ref=e621]: Debt Collector
+                - generic [ref=e622]: da45775d-9839-490f-89d5-5c98dd23adb8
+              - generic [ref=e624]: ended
+              - generic [ref=e625]: 0:06
+              - generic [ref=e626]: pending
+              - generic [ref=e627]: 21 May
+            - link "Debt Collector d0bf24fa-6a8f-498d-9a3a-7e16a8776b53 ended 0:06 pending 21 May" [ref=e628] [cursor=pointer]:
+              - /url: /calls/d0bf24fa-6a8f-498d-9a3a-7e16a8776b53
+              - generic [ref=e629]:
+                - generic [ref=e630]: Debt Collector
+                - generic [ref=e631]: d0bf24fa-6a8f-498d-9a3a-7e16a8776b53
+              - generic [ref=e633]: ended
+              - generic [ref=e634]: 0:06
+              - generic [ref=e635]: pending
+              - generic [ref=e636]: 21 May
+            - link "Debt Collector d28e87bc-684d-4204-919b-cb557b1e4ac2 ended 0:06 pending 21 May" [ref=e637] [cursor=pointer]:
+              - /url: /calls/d28e87bc-684d-4204-919b-cb557b1e4ac2
+              - generic [ref=e638]:
+                - generic [ref=e639]: Debt Collector
+                - generic [ref=e640]: d28e87bc-684d-4204-919b-cb557b1e4ac2
+              - generic [ref=e642]: ended
+              - generic [ref=e643]: 0:06
+              - generic [ref=e644]: pending
+              - generic [ref=e645]: 21 May
+            - link "Debt Collector 94c511ab-c363-4f28-9f99-914dd24a39c2 ended 0:00 — 21 May" [ref=e646] [cursor=pointer]:
+              - /url: /calls/94c511ab-c363-4f28-9f99-914dd24a39c2
+              - generic [ref=e647]:
+                - generic [ref=e648]: Debt Collector
+                - generic [ref=e649]: 94c511ab-c363-4f28-9f99-914dd24a39c2
+              - generic [ref=e651]: ended
+              - generic [ref=e652]: 0:00
+              - generic [ref=e653]: —
+              - generic [ref=e654]: 21 May
+            - link "Debt Collector ebb6eea9-3a43-4f35-ad67-9153f1a74fdf ended 0:36 2c / 2 21 May" [ref=e655] [cursor=pointer]:
+              - /url: /calls/ebb6eea9-3a43-4f35-ad67-9153f1a74fdf
+              - generic [ref=e656]:
+                - generic [ref=e657]: Debt Collector
+                - generic [ref=e658]: ebb6eea9-3a43-4f35-ad67-9153f1a74fdf
+              - generic [ref=e660]: ended
+              - generic [ref=e661]: 0:36
+              - generic [ref=e663]: 2c / 2
+              - generic [ref=e664]: 21 May
+            - link "Shell Gas Uganda 08631810-7130-485e-beca-3bebdbf742c3 ended 1:36 1c / 3 20 May" [ref=e665] [cursor=pointer]:
+              - /url: /calls/08631810-7130-485e-beca-3bebdbf742c3
+              - generic [ref=e666]:
+                - generic [ref=e667]: Shell Gas Uganda
+                - generic [ref=e668]: 08631810-7130-485e-beca-3bebdbf742c3
+              - generic [ref=e670]: ended
+              - generic [ref=e671]: 1:36
+              - generic [ref=e673]: 1c / 3
+              - generic [ref=e674]: 20 May
+            - link "Shell Gas Uganda f6ef12ed-9a83-474d-8e09-c7d3a01ab25f ended 0:00 — 20 May" [ref=e675] [cursor=pointer]:
+              - /url: /calls/f6ef12ed-9a83-474d-8e09-c7d3a01ab25f
+              - generic [ref=e676]:
+                - generic [ref=e677]: Shell Gas Uganda
+                - generic [ref=e678]: f6ef12ed-9a83-474d-8e09-c7d3a01ab25f
+              - generic [ref=e680]: ended
+              - generic [ref=e681]: 0:00
+              - generic [ref=e682]: —
+              - generic [ref=e683]: 20 May
+            - link "Shell Gas Uganda 48316797-421c-40b6-8724-9c0b0df341e4 ended 2:30 2c / 3 20 May" [ref=e684] [cursor=pointer]:
+              - /url: /calls/48316797-421c-40b6-8724-9c0b0df341e4
+              - generic [ref=e685]:
+                - generic [ref=e686]: Shell Gas Uganda
+                - generic [ref=e687]: 48316797-421c-40b6-8724-9c0b0df341e4
+              - generic [ref=e689]: ended
+              - generic [ref=e690]: 2:30
+              - generic [ref=e692]: 2c / 3
+              - generic [ref=e693]: 20 May
+            - link "Shell Gas Uganda a53ae22b-8037-4ce7-9b03-292bdf59c514 ended 0:12 1c / 1 20 May" [ref=e694] [cursor=pointer]:
+              - /url: /calls/a53ae22b-8037-4ce7-9b03-292bdf59c514
+              - generic [ref=e695]:
+                - generic [ref=e696]: Shell Gas Uganda
+                - generic [ref=e697]: a53ae22b-8037-4ce7-9b03-292bdf59c514
+              - generic [ref=e699]: ended
+              - generic [ref=e700]: 0:12
+              - generic [ref=e702]: 1c / 1
+              - generic [ref=e703]: 20 May
+            - link "Debt Collector 7012ca09-7e64-4891-ad95-d2fa4e58440c ended 0:06 pending 20 May" [ref=e704] [cursor=pointer]:
+              - /url: /calls/7012ca09-7e64-4891-ad95-d2fa4e58440c
+              - generic [ref=e705]:
+                - generic [ref=e706]: Debt Collector
+                - generic [ref=e707]: 7012ca09-7e64-4891-ad95-d2fa4e58440c
+              - generic [ref=e709]: ended
+              - generic [ref=e710]: 0:06
+              - generic [ref=e711]: pending
+              - generic [ref=e712]: 20 May
+            - link "Debt Collector 6e2e3350-ce66-4e96-aafd-46c9f5035f6c ended 0:00 — 20 May" [ref=e713] [cursor=pointer]:
+              - /url: /calls/6e2e3350-ce66-4e96-aafd-46c9f5035f6c
+              - generic [ref=e714]:
+                - generic [ref=e715]: Debt Collector
+                - generic [ref=e716]: 6e2e3350-ce66-4e96-aafd-46c9f5035f6c
+              - generic [ref=e718]: ended
+              - generic [ref=e719]: 0:00
+              - generic [ref=e720]: —
+              - generic [ref=e721]: 20 May
+            - link "Debt Collector 92d2a86e-a60f-405b-b80f-517dc3ce1242 ended 1:54 1c / 2 19 May" [ref=e722] [cursor=pointer]:
+              - /url: /calls/92d2a86e-a60f-405b-b80f-517dc3ce1242
+              - generic [ref=e723]:
+                - generic [ref=e724]: Debt Collector
+                - generic [ref=e725]: 92d2a86e-a60f-405b-b80f-517dc3ce1242
+              - generic [ref=e727]: ended
+              - generic [ref=e728]: 1:54
+              - generic [ref=e730]: 1c / 2
+              - generic [ref=e731]: 19 May
+            - link "Debt Collector d633f249-c1fb-4528-b0b2-645664e04923 ended 2:12 1c / 4 19 May" [ref=e732] [cursor=pointer]:
+              - /url: /calls/d633f249-c1fb-4528-b0b2-645664e04923
+              - generic [ref=e733]:
+                - generic [ref=e734]: Debt Collector
+                - generic [ref=e735]: d633f249-c1fb-4528-b0b2-645664e04923
+              - generic [ref=e737]: ended
+              - generic [ref=e738]: 2:12
+              - generic [ref=e740]: 1c / 4
+              - generic [ref=e741]: 19 May
+            - link "Sales AI 18d99326-303d-420d-b789-ee24f19bd8a0 ended 2:06 2c / 5 19 May" [ref=e742] [cursor=pointer]:
+              - /url: /calls/18d99326-303d-420d-b789-ee24f19bd8a0
+              - generic [ref=e743]:
+                - generic [ref=e744]: Sales AI
+                - generic [ref=e745]: 18d99326-303d-420d-b789-ee24f19bd8a0
+              - generic [ref=e747]: ended
+              - generic [ref=e748]: 2:06
+              - generic [ref=e750]: 2c / 5
+              - generic [ref=e751]: 19 May
+            - link "Shell Gas Uganda 953cdd91-ac10-419c-a688-fce44f507f67 ended 0:00 ✓ 18 May" [ref=e752] [cursor=pointer]:
+              - /url: /calls/953cdd91-ac10-419c-a688-fce44f507f67
+              - generic [ref=e753]:
+                - generic [ref=e754]: Shell Gas Uganda
+                - generic [ref=e755]: 953cdd91-ac10-419c-a688-fce44f507f67
+              - generic [ref=e757]: ended
+              - generic [ref=e758]: 0:00
+              - generic [ref=e759]: ✓
+              - generic [ref=e760]: 18 May
+            - link "Shell Gas Uganda 86380187-0c93-4fb7-a901-e70fe71b67dc ended 0:48 1c / 1 18 May" [ref=e761] [cursor=pointer]:
+              - /url: /calls/86380187-0c93-4fb7-a901-e70fe71b67dc
+              - generic [ref=e762]:
+                - generic [ref=e763]: Shell Gas Uganda
+                - generic [ref=e764]: 86380187-0c93-4fb7-a901-e70fe71b67dc
+              - generic [ref=e766]: ended
+              - generic [ref=e767]: 0:48
+              - generic [ref=e769]: 1c / 1
+              - generic [ref=e770]: 18 May
+            - link "Shell Gas Uganda 12099db3-2ddb-4e01-ab65-7a717bcd58cf ended 5:12 1c / 2 18 May" [ref=e771] [cursor=pointer]:
+              - /url: /calls/12099db3-2ddb-4e01-ab65-7a717bcd58cf
+              - generic [ref=e772]:
+                - generic [ref=e773]: Shell Gas Uganda
+                - generic [ref=e774]: 12099db3-2ddb-4e01-ab65-7a717bcd58cf
+              - generic [ref=e776]: ended
+              - generic [ref=e777]: 5:12
+              - generic [ref=e779]: 1c / 2
+              - generic [ref=e780]: 18 May
+            - link "Shell Gas Uganda b5a428c6-c6f8-4ebd-9bce-704f5e801011 ended 0:12 1c / 1 18 May" [ref=e781] [cursor=pointer]:
+              - /url: /calls/b5a428c6-c6f8-4ebd-9bce-704f5e801011
+              - generic [ref=e782]:
+                - generic [ref=e783]: Shell Gas Uganda
+                - generic [ref=e784]: b5a428c6-c6f8-4ebd-9bce-704f5e801011
+              - generic [ref=e786]: ended
+              - generic [ref=e787]: 0:12
+              - generic [ref=e789]: 1c / 1
+              - generic [ref=e790]: 18 May
+            - link "Shell Gas Uganda e680e7c7-bfdb-4240-b6f1-c0e7fe4b48a0 ended 22:18 1c / 3 18 May" [ref=e791] [cursor=pointer]:
+              - /url: /calls/e680e7c7-bfdb-4240-b6f1-c0e7fe4b48a0
+              - generic [ref=e792]:
+                - generic [ref=e793]: Shell Gas Uganda
+                - generic [ref=e794]: e680e7c7-bfdb-4240-b6f1-c0e7fe4b48a0
+              - generic [ref=e796]: ended
+              - generic [ref=e797]: 22:18
+              - generic [ref=e799]: 1c / 3
+              - generic [ref=e800]: 18 May
+            - link "Shell Gas Uganda ba679b72-920c-49c6-b4c9-9ad7ab640de4 ended 1:54 2c / 3 18 May" [ref=e801] [cursor=pointer]:
+              - /url: /calls/ba679b72-920c-49c6-b4c9-9ad7ab640de4
+              - generic [ref=e802]:
+                - generic [ref=e803]: Shell Gas Uganda
+                - generic [ref=e804]: ba679b72-920c-49c6-b4c9-9ad7ab640de4
+              - generic [ref=e806]: ended
+              - generic [ref=e807]: 1:54
+              - generic [ref=e809]: 2c / 3
+              - generic [ref=e810]: 18 May
+            - link "Shell Gas Uganda aa52d75e-d0af-4108-a73b-775fcea33cc4 ended 0:48 1 18 May" [ref=e811] [cursor=pointer]:
+              - /url: /calls/aa52d75e-d0af-4108-a73b-775fcea33cc4
+              - generic [ref=e812]:
+                - generic [ref=e813]: Shell Gas Uganda
+                - generic [ref=e814]: aa52d75e-d0af-4108-a73b-775fcea33cc4
+              - generic [ref=e816]: ended
+              - generic [ref=e817]: 0:48
+              - generic [ref=e818]: "1"
+              - generic [ref=e819]: 18 May
+            - link "Sales AI c95ad166-f8b5-4947-811b-aa6068e31a42 ended 3:42 1c / 3 16 May" [ref=e820] [cursor=pointer]:
+              - /url: /calls/c95ad166-f8b5-4947-811b-aa6068e31a42
+              - generic [ref=e821]:
+                - generic [ref=e822]: Sales AI
+                - generic [ref=e823]: c95ad166-f8b5-4947-811b-aa6068e31a42
+              - generic [ref=e825]: ended
+              - generic [ref=e826]: 3:42
+              - generic [ref=e828]: 1c / 3
+              - generic [ref=e829]: 16 May
+            - link "Debt Collector 48ecece0-1f8c-44e5-b7dc-13ba15c27af3 ended 0:42 1 16 May" [ref=e830] [cursor=pointer]:
+              - /url: /calls/48ecece0-1f8c-44e5-b7dc-13ba15c27af3
+              - generic [ref=e831]:
+                - generic [ref=e832]: Debt Collector
+                - generic [ref=e833]: 48ecece0-1f8c-44e5-b7dc-13ba15c27af3
+              - generic [ref=e835]: ended
+              - generic [ref=e836]: 0:42
+              - generic [ref=e837]: "1"
+              - generic [ref=e838]: 16 May
+          - generic [ref=e839]:
+            - generic [ref=e840]: Page 1 of 37
+            - link "Next →" [ref=e842] [cursor=pointer]:
+              - /url: /dashboard?page=2
+  - alert [ref=e843]
+  - generic [ref=e844]: "0"

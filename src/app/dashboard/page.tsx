@@ -111,6 +111,33 @@ export default async function Dashboard({
     if (name && aid && !agentIdMap.has(name)) agentIdMap.set(name, aid);
   }
 
+  // Count calls per agent from agentIdRows (for agents not in RPC results)
+  const callsPerAgent = new Map<string, number>();
+  for (const r of (agentIdRows ?? []) as Array<Record<string, unknown>>) {
+    const name = r.client_name as string;
+    if (name) callsPerAgent.set(name, (callsPerAgent.get(name) ?? 0) + 1);
+  }
+
+  // Ensure ALL agents with calls appear in the grid, even if they have 0 errors.
+  // get_agent_error_summary() may only return agents with error data.
+  const summaryNames = new Set(agentSummaries.map((s) => s.client_name));
+  for (const [name] of callsPerAgent) {
+    if (!summaryNames.has(name)) {
+      summaryNames.add(name);
+      agentSummaries.push({
+        client_name: name,
+        total_calls: callsPerAgent.get(name) ?? 0,
+        analyzed_calls: 0,
+        calls_with_errors: 0,
+        error_rate: 0,
+        critical_count: 0,
+        top_error_type: null,
+      });
+    }
+  }
+  // Sort: most calls first, ties broken by error rate desc
+  agentSummaries.sort((a, b) => b.total_calls - a.total_calls || b.error_rate - a.error_rate);
+
 
   // ── Client breakdown for filter pills ──────────────────────────────────────
   const clients = (clientRows as Array<Record<string, unknown>> ?? []).map(

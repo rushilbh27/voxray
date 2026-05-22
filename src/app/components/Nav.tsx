@@ -16,19 +16,22 @@ export function Nav({ activeCalls = 0 }: NavProps) {
           <span className="font-semibold text-[14px] tracking-tight text-ink">Voxray</span>
         </Link>
 
-        {/* Center — operational status */}
-        <div className="flex items-center gap-4 text-xs text-ink-3">
-          {activeCalls > 0 ? (
-            <span className="flex items-center gap-1.5 text-accent font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse inline-block" />
-              {activeCalls} live
-            </span>
-          ) : (
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-ok inline-block" />
-              monitoring
-            </span>
-          )}
+        {/* Center — nav links + live status */}
+        <div className="flex items-center gap-6 text-xs">
+          <Link href="/dashboard" className="text-ink-3 hover:text-ink transition-colors font-medium">Agents</Link>
+          <div className="flex items-center gap-1.5 text-ink-3">
+            {activeCalls > 0 ? (
+              <span className="flex items-center gap-1.5 text-accent font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse inline-block" />
+                {activeCalls} live
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-ok inline-block" />
+                monitoring
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Right */}
