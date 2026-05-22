@@ -1,8 +1,0 @@
-[     801ms] [ERROR] Live sync error: TypeError: Failed to fetch
-    at https://voxray.vercel.app/_next/static/chunks/0oqgh68a0va-q.js:1:344100 @ https://voxray.vercel.app/_next/static/chunks/0oqgh68a0va-q.js:0
-[     802ms] [ERROR] Live sync error: TypeError: Failed to fetch
-    at https://voxray.vercel.app/_next/static/chunks/0oqgh68a0va-q.js:1:344100 @ https://voxray.vercel.app/_next/static/chunks/0oqgh68a0va-q.js:0
-[     802ms] [ERROR] Live sync error: TypeError: Failed to fetch
-    at https://voxray.vercel.app/_next/static/chunks/0oqgh68a0va-q.js:1:344100 @ https://voxray.vercel.app/_next/static/chunks/0oqgh68a0va-q.js:0
-[     802ms] [ERROR] Live sync error: TypeError: Failed to fetch
-    at https://voxray.vercel.app/_next/static/chunks/0oqgh68a0va-q.js:1:344100 @ https://voxray.vercel.app/_next/static/chunks/0oqgh68a0va-q.js:0

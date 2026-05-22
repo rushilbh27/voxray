@@ -57,3 +57,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+
+# Playwright test artifacts
+.playwright-mcp/
+test-*.png

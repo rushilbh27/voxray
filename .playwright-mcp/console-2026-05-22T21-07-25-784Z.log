@@ -1,5 +1,0 @@
-[     785ms] [ERROR] Live sync error: TypeError: Failed to fetch
-    at https://voxray.vercel.app/_next/static/chunks/09_t5mfkc5v_j.js:1:351432 @ https://voxray.vercel.app/_next/static/chunks/09_t5mfkc5v_j.js:0
-[     786ms] [ERROR] Live sync error: TypeError: Failed to fetch
-    at https://voxray.vercel.app/_next/static/chunks/09_t5mfkc5v_j.js:1:351432 @ https://voxray.vercel.app/_next/static/chunks/09_t5mfkc5v_j.js:0
-[    2993ms] An error occurred in the Server Components render. The specific message is omitted in production builds to avoid leaking sensitive details. A digest property is included on this error instance which may provide additional details about the nature of the error.
