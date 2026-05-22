@@ -1,0 +1,17 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]: V
+      - generic [ref=e6]: Voxray
+    - generic [ref=e7]:
+      - heading "Sign in" [level=1] [ref=e8]
+      - paragraph [ref=e9]: Access is invite-only.
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - generic [ref=e12]: Email
+          - textbox "you@example.com" [active] [ref=e13]
+        - generic [ref=e14]:
+          - generic [ref=e15]: Password
+          - textbox [ref=e16]
+        - button "Sign in" [ref=e17]
+  - alert [ref=e18]

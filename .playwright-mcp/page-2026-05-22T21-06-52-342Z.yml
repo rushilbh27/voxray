@@ -1,0 +1,8 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e18]
+  - generic [ref=e19]:
+    - banner [ref=e20]:
+      - generic [ref=e22]:
+        - generic [ref=e23]: V
+        - generic [ref=e24]: Voxray
+    - main [ref=e25]

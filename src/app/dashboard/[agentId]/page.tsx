@@ -20,8 +20,10 @@ import { FIX_SPECS } from '@/lib/fix-specs';
 import { PromptViewer } from './PromptViewer';
 import { ApplyAllFixesButton } from './ApplyAllFixesButton';
 import { LiveTracker } from '@/app/components/LiveTracker';
-import { ErrorHeatmap, buildHeatmapRows } from '@/app/components/ErrorHeatmap';
-import { OutcomeChart, buildOutcomeData } from '@/app/components/OutcomeChart';
+import { ErrorHeatmap } from '@/app/components/ErrorHeatmap';
+import { OutcomeChart } from '@/app/components/OutcomeChart';
+import { buildHeatmapRows } from '@/lib/heatmap-utils';
+import { buildOutcomeData } from '@/lib/outcome-utils';
 import { CompareForm } from './CompareForm';
 
 export const revalidate = 60;

@@ -2,19 +2,10 @@
 
 /**
  * ErrorHeatmap — 30-day calendar heatmap per error type.
- * Shows which days each error fired, making patterns (day-of-week, post-patch spikes) visible.
+ * Server-side data building is in src/lib/heatmap-utils.ts (server-safe).
  */
 
-interface DayBucket {
-  date: string; // YYYY-MM-DD
-  count: number;
-}
-
-interface HeatmapRow {
-  errorType: string;
-  label: string;
-  days: DayBucket[]; // 30 entries, one per day
-}
+import type { HeatmapRow } from '@/lib/heatmap-utils';
 
 interface Props {
   rows: HeatmapRow[];
@@ -95,79 +86,4 @@ export function ErrorHeatmap({ rows }: Props) {
       </div>
     </div>
   );
-}
-
-// ── Server-side helper to build HeatmapRow[] from raw call data ──────────────
-
-export interface RawCallForHeatmap {
-  created_at: string;
-  call_errors: unknown;
-}
-
-const HUMAN_LABELS: Record<string, string> = {
-  accepted_unknown_location: 'Unknown location',
-  accepted_garbled_audio:   'Garbled audio',
-  no_save_answers:          'No save (answers)',
-  no_save_debt:             'No save (debt)',
-  stacked_questions:        'Stacked questions',
-  accepted_past_date:       'Past date accepted',
-  accepted_vague_date:      'Vague date accepted',
-  broke_promise:            'Broke promise',
-  wrong_opening:            'Wrong opening',
-  wrong_info:               'Wrong info',
-  no_consultation:          'No consultation',
-  skipped_repeat_rule:      'Skipped repeat rule',
-  restart_loop:             'Restart loop',
-  no_name_collected:        'Name not collected',
-  calculated_balance:       'Calculated balance',
-  invented_amount:          'Invented amount',
-  no_product_context:       'No product context',
-  spoke_luganda:            'Spoke Luganda',
-  wrong_person_handling:    'Wrong person handling',
-  no_commitment:            'No commitment',
-  pushed_back:              'Pushed back',
-  wrong_call_type:          'Wrong call type',
-};
-
-export function buildHeatmapRows(calls: RawCallForHeatmap[], topN = 6): HeatmapRow[] {
-  // Build 30-day date array (most recent last)
-  const days: string[] = [];
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-    days.push(d.toISOString().slice(0, 10));
-  }
-  const dayIndex = new Map(days.map((d, i) => [d, i]));
-
-  // Count occurrences per error_type per day
-  const errorDayCounts = new Map<string, number[]>(); // error_type → 30 counts
-
-  for (const call of calls) {
-    const dateStr = call.created_at.slice(0, 10);
-    const idx = dayIndex.get(dateStr);
-    if (idx === undefined) continue;
-
-    const errors = (call.call_errors as { errors?: Array<{ type: string }> } | null)?.errors ?? [];
-    const seenInCall = new Set<string>();
-    for (const e of errors) {
-      if (!seenInCall.has(e.type)) {
-        seenInCall.add(e.type);
-        if (!errorDayCounts.has(e.type)) {
-          errorDayCounts.set(e.type, new Array(30).fill(0));
-        }
-        errorDayCounts.get(e.type)![idx]++;
-      }
-    }
-  }
-
-  // Sort by total count desc, take topN
-  const sorted = [...errorDayCounts.entries()]
-    .map(([type, counts]) => ({ type, total: counts.reduce((a, b) => a + b, 0), counts }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, topN);
-
-  return sorted.map(({ type, counts }) => ({
-    errorType: type,
-    label: HUMAN_LABELS[type] ?? type,
-    days: days.map((date, i) => ({ date, count: counts[i] })),
-  }));
 }
