@@ -15,7 +15,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { createClient } from '@supabase/supabase-js';
-import Anthropic from '@anthropic-ai/sdk';
+
 import ws from 'ws';
 import dotenv from 'dotenv';
 import { resolve } from 'path';

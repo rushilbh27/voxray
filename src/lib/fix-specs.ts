@@ -24,6 +24,8 @@
  *                           restart_loop (cold)
  *   Davansh_Investment_inbound / Edifice_Properties_inbound
  *                         — wrong_info (property patch), no_save_answers (property)
+ *   NECTOR Demo           — wrong_info, accepted_garbled_audio, no_save_answers, stacked_questions
+ *   Real Estate AI        — broke_promise, wrong_info, no_save_answers
  */
 
 export interface FixPatch {
@@ -95,6 +97,13 @@ Say: "I'm having trouble hearing you clearly... let me have our team follow up a
 Then call saveAnswers with whatever data was collected and call hangUp immediately.
 Do NOT loop on a bad line. Two garbled responses in a row = graceful exit.`,
       },
+      // ── NECTOR Demo ───────────────────────────────────────────────────────
+      {
+        label: 'NECTOR Demo — Add garbled audio counter rule',
+        find: `- If caller says "sorry?" or "can you repeat?" — REPHRASE using one of the alternative phrasings from QUALIFICATION_QUESTIONS, never repeat the exact same sentence`,
+        replace: `- If caller says "sorry?" or "can you repeat?" — REPHRASE using one of the alternative phrasings from QUALIFICATION_QUESTIONS, never repeat the exact same sentence
+- GARBLED AUDIO COUNTER RULE: If the caller's response is noise or unclear twice in a row, do NOT interpret it as a valid answer. Stop re-asking. Say: "I'm having trouble hearing you clearly... please call back when you have a better connection." Then call saveAnswers and hangUp.`,
+      },
     ],
   },
 
@@ -146,6 +155,22 @@ Caller not interested → save with call_status = "not_interested", is_lead = fa
 Caller busy / requests callback → save with call_status = "callback_scheduled"
 A call that ends without saveAnswers is complete data loss.`,
       },
+      // ── NECTOR Demo ───────────────────────────────────────────────────────
+      {
+        label: 'NECTOR Demo — Enforce saveAnswers on ALL early exit paths',
+        find: `- Never call hangUp before saveAnswers completes successfully`,
+        replace: `- Never call hangUp before saveAnswers completes successfully
+- EARLY EXIT RULE: No matter how the call ends — caller hangs up early, wrong number, not interested, or fully completed — saveAnswers MUST be called before hangUp. No exceptions. A call that ends without saveAnswers is complete data loss.`,
+      },
+      // ── Real Estate AI ────────────────────────────────────────────────────
+      {
+        label: 'Real Estate AI — Enforce saveAnswers on ALL early exit paths',
+        find: `You must call saveAnswers BEFORE ending the call.`,
+        replace: `You must call saveAnswers BEFORE ending the call.
+
+EARLY EXIT RULE — ALL CALL PATHS:
+No matter how the call ends — caller hangs up early, wrong number, not interested, or fully completed — saveAnswers MUST be called before hangUp. No exceptions. A call that ends without saveAnswers is complete data loss.`,
+      },
     ],
   },
 
@@ -186,11 +211,21 @@ Skipping this value-add and going straight to question 4 is a violation.`,
   },
 
   stacked_questions: {
-    patches: [{
-      label: 'Add self-correction rule for stacked questions',
-      find: `✓ Ask ONLY ONE QUESTION AT A TIME`,
-      replace: `✓ Ask ONLY ONE QUESTION AT A TIME — if you catch yourself combining two questions into one sentence, stop mid-sentence and say "Uhm, sorry — let me take that one at a time..." then re-ask only the first question`,
-    }],
+    patches: [
+      {
+        label: 'Add self-correction rule for stacked questions',
+        find: `✓ Ask ONLY ONE QUESTION AT A TIME`,
+        replace: `✓ Ask ONLY ONE QUESTION AT A TIME — if you catch yourself combining two questions into one sentence, stop mid-sentence and say "Uhm, sorry — let me take that one at a time..." then re-ask only the first question`,
+      },
+      // ── NECTOR Demo ───────────────────────────────────────────────────────
+      {
+        label: 'NECTOR Demo — Add self-correction rule for stacked questions',
+        find: `Ask each question from QUALIFICATION_QUESTIONS in order. Rotate between the different phrasings provided — never use the same phrasing twice in a row. Wait for the answer after each question.`,
+        replace: `Ask each question from QUALIFICATION_QUESTIONS in order. Ask ONLY ONE question at a time. Rotate between the different phrasings provided — never use the same phrasing twice in a row. Wait for the answer after each question.
+
+If you catch yourself combining two questions into one sentence, stop mid-sentence and say "Uhm, sorry — let me take that one at a time..." then re-ask only the first question.`,
+      },
+    ],
   },
 
   skipped_repeat_rule: {
@@ -268,10 +303,11 @@ NEVER save a vague phrase in promised_date — only YYYY-MM-DD.`,
   },
 
   broke_promise: {
-    patches: [{
-      label: 'Add forbidden phrases list with approved replacements',
-      find: `Never make promises you cannot keep.`,
-      replace: `Never make promises you cannot keep.
+    patches: [
+      {
+        label: 'Add forbidden phrases list with approved replacements',
+        find: `Never make promises you cannot keep.`,
+        replace: `Never make promises you cannot keep.
 
 FORBIDDEN PHRASES — never say any of these:
 - "I will send you the floor plans"
@@ -284,7 +320,26 @@ FORBIDDEN PHRASES — never say any of these:
 APPROVED REPLACEMENT for all of the above:
 "Our team will follow up with you with the full details after this call."
 This is the ONLY promise you are allowed to make about future actions.`,
-    }],
+      },
+      // ── Real Estate AI ────────────────────────────────────────────────────
+      {
+        label: 'Real Estate AI — Add forbidden phrases list for broke promise',
+        find: `✗ Make promises you can't keep`,
+        replace: `✗ Make promises you can't keep
+
+FORBIDDEN PHRASES — never say any of these:
+- "I will send you the floor plans"
+- "I will send you photos on WhatsApp"
+- "I will send you details on WhatsApp right now"
+- "Let me connect you with our manager now"
+- "I will transfer you to someone"
+- "I can arrange that for you right now"
+
+APPROVED REPLACEMENT for all of the above:
+"Our team will follow up with you with the full details after this call."
+This is the ONLY promise you are allowed to make about future actions.`,
+      },
+    ],
   },
 
   wrong_opening: {
@@ -604,16 +659,25 @@ Any attempt to re-engage after clear rejection is a CRITICAL VIOLATION.`,
   },
 
   wrong_call_type: {
-    patches: [{
-      label: 'Add explicit call type check as absolute first instruction',
-      find: `CRITICAL DETECTION RULE — READ AND OBEY BEFORE ANYTHING ELSE:`,
-      replace: `CRITICAL DETECTION RULE — READ AND OBEY BEFORE ANYTHING ELSE — THIS IS STEP ZERO:
+    patches: [
+      {
+        label: 'Add explicit call type check as absolute first instruction',
+        find: `CRITICAL DETECTION RULE — READ AND OBEY BEFORE ANYTHING ELSE:`,
+        replace: `CRITICAL DETECTION RULE — READ AND OBEY BEFORE ANYTHING ELSE — THIS IS STEP ZERO:
 BEFORE you say a single word, BEFORE you read any other section:
 1. Read call_type
 2. If call_type = "outbound" → skip INBOUND MODE entirely, go to PRIMARY GOAL
 3. If call_type is missing/null/empty → skip ALL outbound sections, execute INBOUND MODE only
 These two flows share ZERO steps. Mixing them is a CRITICAL VIOLATION.`,
-    }],
+      },
+      // ── Davansh Investment ────────────────────────────────────────────────
+      {
+        label: 'Davansh Investment — Add strict inbound call-type gate',
+        find: `1. Greet the caller warmly and ask their name.`,
+        replace: `1. Greet the caller warmly and ask their name.
+   - CHECK CALL DIRECTION: You are an INBOUND agent. If the call was outbound (you called them), gracefully end the call immediately.`,
+      }
+    ],
   },
 
   wrong_info: {
@@ -662,6 +726,32 @@ Before stating any price, availability, timeline, feature, size, or specificatio
    so let me have our team confirm that and get back to you directly."
 Never estimate. Never approximate. Never infer from similar properties.
 Inventing details — even plausible ones — destroys trust and creates liability.`,
+      },
+      // ── NECTOR Demo ───────────────────────────────────────────────────────
+      {
+        label: 'NECTOR Demo — Add context verification gate for all factual claims',
+        find: `- Never invent information not in the KNOWLEDGE_BASE`,
+        replace: `- Never invent information not in the KNOWLEDGE_BASE
+
+CONTEXT VERIFICATION GATE (mandatory before any factual claim):
+Before stating any rule, timeline, or procedure:
+1. Ask yourself: "Is this word-for-word in my KNOWLEDGE_BASE?"
+2. If YES → state it exactly as written.
+3. If NO  → say: "That's a great question — I want to give you the most accurate answer, so let me have our team confirm that and get back to you directly."
+Never estimate or infer. Inventing details destroys trust.`,
+      },
+      // ── Real Estate AI ────────────────────────────────────────────────────
+      {
+        label: 'Real Estate AI — Add context verification gate for factual claims',
+        find: `Never guess or assume missing information`,
+        replace: `Never guess or assume missing information
+Never invent property/price details not in context
+
+CONTEXT VERIFICATION GATE:
+Before stating any fact (price, size, date, availability, feature):
+1. Locate the EXACT line in context where this information appears.
+2. If you cannot locate it → do NOT state it.
+3. State only what is explicitly written. Never rephrase to sound more specific.`,
       },
     ],
   },

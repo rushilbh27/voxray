@@ -3,13 +3,13 @@ import { useState } from 'react';
 
 interface Props {
   agentId:   string;
-  agentName: string;
+
   limit?:    number;
 }
 
 type State = 'idle' | 'running' | 'done' | 'error';
 
-export function ReanalyzeButton({ agentId, agentName, limit = 30 }: Props) {
+export function ReanalyzeButton({ agentId, limit = 30 }: Props) {
   const [state, setState]   = useState<State>('idle');
   const [count, setCount]   = useState(0);
   const [errMsg, setErrMsg] = useState('');

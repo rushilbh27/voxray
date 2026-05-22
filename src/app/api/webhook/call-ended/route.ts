@@ -98,6 +98,7 @@ export async function POST(req: NextRequest) {
         .eq('call_id', callId);
 
       // 4. Analyze — skip very short / unjoined calls
+      let analysisErrors: import('@/lib/error-analyzer').CallError[] = [];
       if (messages.length >= 4) {
         const result = await analyzeCall({
           callId,
@@ -117,6 +118,8 @@ export async function POST(req: NextRequest) {
             prompt_hash:           result.prompt_hash ?? null,
           })
           .eq('call_id', callId);
+
+        analysisErrors = result.analysis.errors ?? [];
       } else {
         await supabaseAdmin
           .from('ultravox_calls')
@@ -124,7 +127,19 @@ export async function POST(req: NextRequest) {
           .eq('call_id', callId);
       }
 
-      // 5. Run alert check — catches new critical errors immediately
+      // 5. Repeat error check — fires targeted alert if same error is recurring
+      //    Non-blocking: don't let failure here block alert engine
+      if (analysisErrors.length > 0) {
+        const { checkRepeatErrors } = await import('@/lib/repeat-error-tracker');
+        checkRepeatErrors(
+          callId,
+          call.agentId as string | null,
+          clientName,
+          analysisErrors,
+        ).catch(() => {});
+      }
+
+      // 6. Run alert check — catches new critical errors immediately
       await runAlertCheck();
     } catch (err) {
       console.error('[webhook/call-ended] error:', err);

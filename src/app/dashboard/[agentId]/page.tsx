@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { fetchAgent } from '@/lib/ultravox';
-import { getApplicablePatches, verifyPatch } from '@/lib/fix-specs';
+import { getApplicablePatches } from '@/lib/fix-specs';
 import { FixBlock } from '@/app/components/FixBlock';
 import { Nav } from '@/app/components/Nav';
 import { ApplyFixButton } from '@/app/components/ApplyFixButton';
@@ -16,12 +16,17 @@ import type { VelocityPoint } from '@/app/components/ErrorVelocitySparkline';
 import { PromptVersionChart } from '@/app/components/PromptVersionChart';
 import type { VersionPoint } from '@/app/components/PromptVersionChart';
 import type { ErrorAnalysis } from '@/lib/error-analyzer';
+import { FIX_SPECS } from '@/lib/fix-specs';
 import { PromptViewer } from './PromptViewer';
 import { ApplyAllFixesButton } from './ApplyAllFixesButton';
+import { LiveTracker } from '@/app/components/LiveTracker';
 
 export const revalidate = 60;
 
-const NECTOR_DEMO_ID = '428d7591-3ba5-4b60-8aa5-a92012d12451';
+const ALLOWED_AGENT_IDS = [
+  '428d7591-3ba5-4b60-8aa5-a92012d12451', // NECTOR Demo
+  '0a5b5ccc-4f75-456c-94c8-f9e7293f9d81', // Davansh Investment
+];
 
 const HUMAN_LABELS: Record<string, string> = {
   accepted_unknown_location: 'Accepted unrecognizable area name',
@@ -73,7 +78,7 @@ export default async function AgentProfilePage({
   const [
     agent,
     { data: errorFreqRows },
-    { data: statsRow },
+
     { data: worstCallsRaw },
     { data: evalRows },
     { data: velocityRows },
@@ -86,15 +91,10 @@ export default async function AgentProfilePage({
       p_since: null,
       p_agent: clientName,
     }),
+
     supabaseAdmin
       .from('ultravox_calls')
-      .select('call_id', { count: 'exact', head: false })
-      .eq('agent_id', agentId)
-      .eq('status', 'ended')
-      .limit(0),
-    supabaseAdmin
-      .from('ultravox_calls')
-      .select('call_id, client_name, call_errors, error_count, critical_error_count')
+      .select('call_id, client_name, customer_name, call_errors, error_count, critical_error_count, created_at')
       .eq('agent_id', agentId)
       .eq('analysis_status', 'complete')
       .gt('error_count', 0)
@@ -106,13 +106,14 @@ export default async function AgentProfilePage({
     supabaseAdmin.from('false_positives').select('call_id, error_type'),
     supabaseAdmin
       .from('ultravox_calls')
-      .select('analysis_status, error_count, critical_error_count')
+      .select('analysis_status, error_count, critical_error_count', { count: 'exact', head: false })
       .eq('agent_id', agentId)
-      .eq('status', 'ended'),
+      .eq('status', 'ended')
+      .limit(5000), // cap at 5k — stat display doesn't need every row
   ]);
 
   const prompt = agent?.systemPrompt ?? '';
-  const isAllowlisted = agentId === NECTOR_DEMO_ID;
+  const isAllowlisted = ALLOWED_AGENT_IDS.includes(agentId);
 
   // Compute agent-level stats from aggRows
   const allCalls = aggRows ?? [];
@@ -180,6 +181,7 @@ export default async function AgentProfilePage({
       <Nav activeCalls={0} />
 
       <main className="max-w-7xl mx-auto px-6 pb-16">
+        <LiveTracker />
         {/* Breadcrumb + header */}
         <div className="py-6 border-b border-border mb-8">
           <Link href="/dashboard" className="text-xs text-ink-3 hover:text-accent transition-colors">
@@ -191,7 +193,7 @@ export default async function AgentProfilePage({
               <div className="text-xs font-mono text-ink-3 mt-1">{agentId}</div>
             </div>
             <div className="flex items-center gap-3">
-              <ReanalyzeButton agentId={agentId} agentName={clientName} limit={30} />
+              <ReanalyzeButton agentId={agentId} limit={30} />
               {isAllowlisted && fixableErrors.length > 0 && (
                 <ApplyAllFixesButton
                   agentId={agentId}
@@ -261,8 +263,15 @@ export default async function AgentProfilePage({
                 </div>
                 <div className="divide-y divide-border-subtle">
                   {topErrors.slice(0, 15).map((err, i) => {
-                    const patches = prompt ? getApplicablePatches(err.type, prompt) : [];
-                    const hasApplicable = patches.some((p) => !p.alreadyFixed);
+                    // Always get patches — even without prompt, show spec for manual copy
+                    const patches = prompt
+                      ? getApplicablePatches(err.type, prompt)
+                      : (FIX_SPECS[err.type]?.patches ?? []).map((patch) => ({
+                          patch,
+                          alreadyFixed: false,
+                          verification: { exists: false, lineNumber: 0, contextBefore: '', contextAfter: '' },
+                        }));
+                    const hasApplicable = prompt ? patches.some((p) => !p.alreadyFixed) : false;
                     const canApply = isAllowlisted && hasApplicable;
 
                     return (
@@ -288,23 +297,30 @@ export default async function AgentProfilePage({
                             </div>
                             <div className="text-xs font-mono text-ink-3 mb-2">{err.type}</div>
 
-                            {/* Verified patches */}
+                            {/* Verified patches — always shown for manual copy */}
                             {patches.length > 0 && (
                               <div>
-                                <div className="text-[11px] text-ink-3 mb-1">
-                                  {hasApplicable ? (
-                                    <>
-                                      <span className="text-ok">✓ find text verified</span>
-                                      {patches.filter(p => !p.alreadyFixed).map((p) => (
-                                        <span key={p.patch.label} className="ml-2 text-ink-3">
-                                          Line {p.verification.lineNumber}
-                                        </span>
-                                      ))}
-                                    </>
-                                  ) : (
-                                    <span className="text-warn">All patches already applied</span>
-                                  )}
-                                </div>
+                                {prompt && (
+                                  <div className="text-[11px] text-ink-3 mb-1">
+                                    {hasApplicable ? (
+                                      <>
+                                        <span className="text-ok">✓ find text verified in prompt</span>
+                                        {patches.filter(p => !p.alreadyFixed).map((p) => (
+                                          <span key={p.patch.label} className="ml-2 text-ink-3">
+                                            · line {p.verification.lineNumber}
+                                          </span>
+                                        ))}
+                                      </>
+                                    ) : (
+                                      <span className="text-warn">✓ All patches already applied to this agent</span>
+                                    )}
+                                  </div>
+                                )}
+                                {!prompt && (
+                                  <div className="text-[11px] text-ink-3 mb-1">
+                                    <span className="text-warn">Prompt unavailable — copy snippets below for manual apply</span>
+                                  </div>
+                                )}
                                 <FixBlock
                                   patches={patches.map((p) => ({
                                     label: p.patch.label,
@@ -317,9 +333,9 @@ export default async function AgentProfilePage({
                             )}
 
                             {/* No patches for this error type */}
-                            {patches.length === 0 && prompt && (
+                            {patches.length === 0 && (
                               <div className="text-xs text-ink-3 mt-1">
-                                No structured patch available for this error type on {clientName}.
+                                No structured patch available for this error type.
                               </div>
                             )}
 
@@ -327,7 +343,7 @@ export default async function AgentProfilePage({
                             {err.example_line && (
                               <div className="mt-3 mb-1 px-3 py-2 bg-canvas border border-border-subtle rounded-lg">
                                 <div className="text-[10px] font-semibold text-ink-3 uppercase tracking-wider mb-1">Agent said</div>
-                                <div className="text-xs text-ink-2 italic leading-snug">"{err.example_line}"</div>
+                                <div className="text-xs text-ink-2 italic leading-snug">&quot;{err.example_line}&quot;</div>
                               </div>
                             )}
 
@@ -370,11 +386,25 @@ export default async function AgentProfilePage({
                   )}
                   {worstCalls.map((call) => {
                     const analysis = call.call_errors as ErrorAnalysis | null;
+                    const customerName = (call as Record<string, unknown>).customer_name as string | null;
+                    const callDate = (call as Record<string, unknown>).created_at as string | null;
                     return (
                       <div key={call.call_id} className="px-5 py-3.5">
                         <div className="flex items-start justify-between gap-3">
                           <Link href={`/calls/${call.call_id}`} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
-                            <div className="text-[11px] font-mono text-ink-3 mb-1">{(call.call_id as string).substring(0, 24)}…</div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[11px] font-mono text-ink-3">{(call.call_id as string).substring(0, 20)}…</span>
+                              {customerName && (
+                                <span className="text-[11px] font-medium text-ink-2 bg-surface-2 px-1.5 py-0.5 rounded">
+                                  {customerName}
+                                </span>
+                              )}
+                              {callDate && (
+                                <span className="text-[10px] text-ink-3">
+                                  {new Date(callDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                                </span>
+                              )}
+                            </div>
                             {analysis?.summary && (
                               <div className="text-xs text-ink-2 line-clamp-2">{analysis.summary}</div>
                             )}

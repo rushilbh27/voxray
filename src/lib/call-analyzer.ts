@@ -35,9 +35,11 @@ export async function analyzeCall(opts: AnalyzeCallOptions): Promise<AnalyzeResu
 
   // ── Compute prompt hash if agent ID is known ────────────────────────────────
   let promptHash: string | undefined;
+  let agentPrompt: string | undefined;
   if (agentId) {
     const agent = await fetchAgent(agentId).catch(() => null);
     if (agent?.systemPrompt) {
+      agentPrompt = agent.systemPrompt;
       promptHash = createHash('sha256').update(agent.systemPrompt).digest('hex');
 
       // Upsert prompt version record — dynamic import avoids top-level env requirement
@@ -52,7 +54,7 @@ export async function analyzeCall(opts: AnalyzeCallOptions): Promise<AnalyzeResu
 
   // ── Primary: Claude Haiku text analysis (always, synchronous) ──────────────
   const agentType = detectAgentType(clientName);
-  const analysis = await analyzeCallErrors(messages, agentType, { callId, promptHash });
+  const analysis = await analyzeCallErrors(messages, agentType, { callId, promptHash, agentPrompt });
 
   // ── Enrichment: Llama audio pipeline (fire-and-forget, non-blocking) ───────
   // Only used to get raw_transcript + customer_name + agent_name via webhook.

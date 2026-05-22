@@ -44,35 +44,33 @@ export function FixBlock({ patches }: { patches: Patch[] }) {
             )}
           </div>
 
-          {p.alreadyFixed ? (
-            <div className="px-3 py-2 text-gray-400 italic">
-              This text is no longer in the current prompt — fix was already applied.
+          {p.alreadyFixed && (
+            <div className="px-3 py-2 text-gray-500 italic bg-gray-50 border-b border-gray-200 text-xs">
+              This patch is already present in the current prompt.
             </div>
-          ) : (
-            <>
-              {/* Find */}
-              <div className="border-b border-gray-200">
-                <div className="flex items-center justify-between px-3 py-1 bg-red-50">
-                  <span className="text-red-600 font-semibold uppercase tracking-wide text-[10px]">Find</span>
-                  <CopyBtn text={p.find} />
-                </div>
-                <pre className="px-3 py-2 text-gray-700 font-mono text-[11px] leading-relaxed whitespace-pre-wrap bg-red-50/30 overflow-x-auto">
-                  {p.find}
-                </pre>
-              </div>
-
-              {/* Replace */}
-              <div>
-                <div className="flex items-center justify-between px-3 py-1 bg-green-50">
-                  <span className="text-green-700 font-semibold uppercase tracking-wide text-[10px]">Replace with</span>
-                  <CopyBtn text={p.replace} />
-                </div>
-                <pre className="px-3 py-2 text-gray-700 font-mono text-[11px] leading-relaxed whitespace-pre-wrap bg-green-50/30 overflow-x-auto">
-                  {p.replace}
-                </pre>
-              </div>
-            </>
           )}
+
+          {/* Find */}
+          <div className="border-b border-gray-200">
+            <div className="flex items-center justify-between px-3 py-1 bg-red-50">
+              <span className="text-red-600 font-semibold uppercase tracking-wide text-[10px]">Find</span>
+              <CopyBtn text={p.find} />
+            </div>
+            <pre className="px-3 py-2 text-gray-700 font-mono text-[11px] leading-relaxed whitespace-pre-wrap bg-red-50/30 overflow-x-auto">
+              {p.find}
+            </pre>
+          </div>
+
+          {/* Replace */}
+          <div>
+            <div className="flex items-center justify-between px-3 py-1 bg-green-50">
+              <span className="text-green-700 font-semibold uppercase tracking-wide text-[10px]">Replace with</span>
+              <CopyBtn text={p.replace} />
+            </div>
+            <pre className="px-3 py-2 text-gray-700 font-mono text-[11px] leading-relaxed whitespace-pre-wrap bg-green-50/30 overflow-x-auto">
+              {p.replace}
+            </pre>
+          </div>
         </div>
       ))}
     </div>

@@ -40,9 +40,7 @@ export function detectAgentType(clientName: string): AgentType {
       n.includes('edifice') || n.includes('ramco') || n.includes('davansh') ||
       n.includes('acme') || n.includes('nector')) return 'sales';
   return 'sales'; // default to sales analysis
-}
-
-function buildAnalysisPrompt(agentType: AgentType, transcript: string): string {
+}function buildAnalysisPrompt(agentType: AgentType, transcript: string, agentPrompt?: string): string {
   const base = `You are an expert AI voice agent quality auditor. Analyze this call transcript and identify SPECIFIC mistakes the agent made.
 
 Return ONLY valid JSON matching this exact schema:
@@ -66,8 +64,24 @@ Return ONLY valid JSON matching this exact schema:
   "critical_error_count": number
 }`;
 
-  const agentRules: Record<AgentType, string> = {
-    sales: `
+  let rulesSection = '';
+  if (agentPrompt && agentPrompt.trim().length > 0) {
+    rulesSection = `
+DYNAMIC AGENT PROMPT ANALYSIS
+=============================
+The agent was configured with the following system prompt. You MUST evaluate the agent strictly against THESE instructions:
+
+<system_prompt>
+${agentPrompt}
+</system_prompt>
+
+Compare the transcript to the instructions in the <system_prompt>. 
+Identify ANY deviations, rule breaks, or behavioral failures based explicitly on what the prompt tells the agent to do.
+For the "type" field, create a concise snake_case identifier for the specific rule that was broken (e.g., "broke_promise", "invented_info", "stacked_questions", "no_save_answers").
+`;
+  } else {
+    const agentRules: Record<AgentType, string> = {
+      sales: `
 AGENT TYPE: Sales AI (property/product outbound sales)
 
 RULES THIS AGENT MUST FOLLOW:
@@ -97,7 +111,7 @@ ERROR TYPES TO DETECT:
 
 GOAL: Book appointment or schedule callback with interested lead.`,
 
-    debt: `
+      debt: `
 AGENT TYPE: Debt Collector
 
 RULES THIS AGENT MUST FOLLOW:
@@ -125,7 +139,7 @@ ERROR TYPES TO DETECT:
 
 GOAL: Get exact payment commitment date OR escalate to human team.`,
 
-    cold_outreach: `
+      cold_outreach: `
 AGENT TYPE: Cold Outreach AI (marketing calls, no prior relationship)
 
 RULES THIS AGENT MUST FOLLOW:
@@ -149,7 +163,7 @@ ERROR TYPES TO DETECT:
 
 GOAL: Get customer name + answer questions + schedule callback/appointment.`,
 
-    unknown: `
+      unknown: `
 AGENT TYPE: Unknown — analyze for general quality issues.
 
 ERROR TYPES TO DETECT:
@@ -159,16 +173,18 @@ ERROR TYPES TO DETECT:
 - made_promise: Promise agent can't keep
 - no_commitment: No clear next step achieved
 - wrong_flow: Agent executed wrong type of call flow`
-  };
+    };
+    rulesSection = agentRules[agentType];
+  }
 
   return `${base}
 
-${agentRules[agentType]}
+${rulesSection}
 
 TRANSCRIPT:
 ${transcript}
 
-Analyze only ACTUAL mistakes. If the agent performed well, errors array can be empty. Be specific — quote exact agent lines. Focus on errors that hurt the call outcome or violate rules above.`;
+Analyze only ACTUAL mistakes. If the agent performed well, errors array can be empty. Be specific — quote exact agent lines. Focus on errors that hurt the call outcome or violate the instructions above.`;
 }
 
 function formatTranscript(messages: Array<{ role: string; text: string; ordinal: number }>): string {
@@ -193,7 +209,7 @@ function formatTranscript(messages: Array<{ role: string; text: string; ordinal:
 export async function analyzeCallErrors(
   messages: Array<{ role: string; text: string; ordinal: number }>,
   agentType: AgentType,
-  opts?: { callId?: string; promptHash?: string }
+  opts?: { callId?: string; promptHash?: string; agentPrompt?: string }
 ): Promise<ErrorAnalysis> {
   if (messages.length === 0) {
     return {
@@ -208,7 +224,7 @@ export async function analyzeCallErrors(
   }
 
   const transcript = formatTranscript(messages);
-  const prompt = buildAnalysisPrompt(agentType, transcript);
+  const prompt = buildAnalysisPrompt(agentType, transcript, opts?.agentPrompt);
 
   const t0 = Date.now();
   let response: import('@anthropic-ai/sdk/resources/messages').Message | undefined;

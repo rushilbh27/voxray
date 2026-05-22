@@ -1,6 +1,6 @@
 # Voxray — Project Status Report
 
-> Last updated: 2026-05-22  
+> Last updated: 2026-05-22 (session 2 sync)  
 > Update this file every session. Not a handoff bridge — a permanent record of what was built, where we stand, and where we're going.
 
 ---
@@ -69,11 +69,11 @@ Feedback loop: every fix has before/after proof
 | Cold_Outreach_AI | `74c435db` | Cold outreach | ✅ 8 patches verified |
 | Davansh_Investment_inbound | `0a5b5ccc` | Inbound receptionist | ✅ 2 patches verified |
 | Edifice_Properties_inbound | `bfea3820` | Inbound receptionist | ✅ 2 patches verified |
-| NECTOR_DEMO_TEST | `428d7591` | UCC complaints demo | ❌ 0 patches — needs own error types (different domain) |
-| Real_Estate_AI_Sales_Agent | `efecb97c` | Outbound sales | ⚠️ 1 patch (stacked_questions only) |
-| Ramco_Gas_inbound | `5da7bc3e` | Inbound receptionist | ❓ Not checked |
-| Follow_Up_Debt_Collection_Bot | `3983f5c0` | Debt follow-up | ❓ Not checked |
-| Debt_Collection_Welcome-Bot | `2dfe90c6` | Debt welcome | ❓ Not checked |
+| NECTOR_DEMO_TEST | `428d7591` | UCC complaints demo | ✅ 4 patches verified (wrong_info, accepted_garbled_audio, no_save_answers, stacked_questions) |
+| Real_Estate_AI_Sales_Agent | `efecb97c` | Outbound sales | ✅ 3 patches verified (broke_promise, wrong_info, no_save_answers) |
+| Ramco_Gas_inbound | `5da7bc3e` | Inbound receptionist | ✅ No active errors in Supabase — no patches needed |
+| Follow_Up_Debt_Collection_Bot | `3983f5c0` | Debt follow-up | ✅ No active errors in Supabase — no patches needed |
+| Debt_Collection_Welcome-Bot | `2dfe90c6` | Debt welcome | ✅ No active errors in Supabase — no patches needed |
 
 **Apply-fix allowlist:** NECTOR Demo only. All other agents: patches show as suggestions, apply button never appears, API returns 403.
 
@@ -162,6 +162,12 @@ Feedback loop: every fix has before/after proof
 | Debt-Collector-Agent-UG | `no_save_debt`, `calculated_balance`, `invented_amount`, `no_product_context`, `no_commitment`, `accepted_vague_date` |
 | Cold_Outreach_AI | `accepted_garbled_audio`, `wrong_opening`, `pushed_back`, `no_name_collected`, `restart_loop` |
 | Davansh + Edifice | `wrong_info`, `no_save_answers` |
+
+### Phase 9 — Fix-Specs for NECTOR Demo + Real Estate AI (session 2)
+- NECTOR Demo: 4 patches written — `wrong_info` (context verification gate), `accepted_garbled_audio` (garbled counter rule), `no_save_answers` (early exit enforcement), `stacked_questions` (self-correction rule)
+- Real_Estate_AI: 3 patches written — `broke_promise` (forbidden phrases list), `wrong_info` (context-only gate), `no_save_answers` (tool enforcement on partial calls)
+- Ramco Gas / Follow-Up Debt / Debt Welcome: verified healthy (no active errors in DB), no patches needed
+- PROJECT_STATUS.md + HANDOFF.md updated to reflect actual state
 
 ### Phase 8 — Transcript Examples on Agent Profile (`cc21216`)
 - `example_line` (`agent_line` from `call_errors` JSONB) was fetched from `get_error_frequency` RPC but never rendered
@@ -316,15 +322,12 @@ Each error type has patches (find→replace strings). On the agent profile page,
 ## What's Left — Prioritized
 
 ### High priority
-- [ ] **NECTOR Demo fix-specs** — UCC complaints agent. Different domain, different errors. Need to: (1) look at what Haiku detects for this agent in DB, (2) read its prompt, (3) write matching patches. Currently 0 patches.
-- [ ] **Real_Estate_AI_Sales_Agent** — only `stacked_questions` matches. Needs wrong_info, broke_promise, no_save_answers patches matched to its prompt text.
-- [ ] **Ramco_Gas_inbound** — 5.3k char prompt, not checked. Likely has `wrong_info`, inbound save issues.
+- [ ] **Before/after comparison on agent profile** — `get_comparison_data(date)` RPC exists but UI removed from dashboard. Add `?compare=YYYY-MM-DD` to agent profile page.
+- [ ] **Expand apply-fix allowlist** — when FP rate < 10% for an error type on production agent, consider adding that agent. Currently NECTOR Demo only.
 
 ### Medium priority
-- [ ] **Follow_Up_Debt_Collection_Bot** — debt follow-up bot, different prompt from main debt collector. Check which debt error specs match.
-- [ ] **Debt_Collection_Welcome-Bot** — welcome bot, 12k char prompt. Check which specs match.
-- [ ] **Before/after comparison on agent profile** — `get_comparison_data(date)` RPC exists but UI was removed from dashboard. Add `?compare=YYYY-MM-DD` to agent profile page.
-- [ ] **Expand apply-fix allowlist** — when FP rate < 10% for an error type on a production agent, consider adding that agent. Currently NECTOR Demo only.
+- [ ] **Ramco Gas / Follow-Up Debt / Welcome Bot patches** — currently healthy (no errors). If errors start appearing, write patches against their actual prompts.
+- [ ] **Verify NECTOR Demo + Real Estate patches** — patches written but `verifyPatch()` not confirmed against live prompt text. Run agent profile page for these agents to confirm line numbers show.
 
 ### Low priority
 - [ ] **README update** — document agent profile flow for new users

@@ -138,6 +138,9 @@ export interface UltravoxAgent {
   agentId: string;
   name: string;
   systemPrompt?: string | null;
+  callTemplate?: {
+    systemPrompt?: string | null;
+  };
   [key: string]: unknown;
 }
 
@@ -145,10 +148,13 @@ export async function fetchAgent(agentId: string): Promise<UltravoxAgent | null>
   try {
     const res = await fetch(`${ULTRAVOX_API_URL}/agents/${agentId}`, {
       headers: headers(),
-      next: { revalidate: 300 }, // cache 5 min — prompts don't change often
+      cache: 'no-store', // always fresh — prompts change after patches
     });
     if (!res.ok) return null;
-    return res.json();
+    const data = await res.json();
+    // Ultravox stores systemPrompt nested under callTemplate, not at root level
+    const prompt = data?.callTemplate?.systemPrompt ?? data?.systemPrompt ?? null;
+    return { ...data, systemPrompt: prompt };
   } catch {
     return null;
   }
@@ -165,7 +171,8 @@ export async function fetchAgentPrompts(): Promise<Record<string, string>> {
   const results = await Promise.all(
     Object.entries(agentIds).map(async ([name, id]) => {
       const agent = await fetchAgent(id);
-      return [name, agent?.systemPrompt ?? ''] as [string, string];
+      const prompt = agent?.systemPrompt || agent?.callTemplate?.systemPrompt || '';
+      return [name, prompt] as [string, string];
     })
   );
 
@@ -196,7 +203,7 @@ export async function fetchAllAgentPrompts(): Promise<Record<string, AgentPrompt
   const results = await Promise.all(
     [...agentMap.entries()].map(async ([agentId, clientName]) => {
       const agent = await fetchAgent(agentId);
-      const prompt = agent?.systemPrompt ?? '';
+      const prompt = agent?.systemPrompt || agent?.callTemplate?.systemPrompt || '';
       return [clientName, { prompt, agentId, agentName: clientName }] as [string, AgentPromptInfo];
     })
   );

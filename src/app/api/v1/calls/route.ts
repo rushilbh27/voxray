@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import type { ErrorAnalysis } from '@/lib/error-analyzer';
+
 import { checkApiKey } from '@/lib/api-auth';
 
 export const revalidate = 0;

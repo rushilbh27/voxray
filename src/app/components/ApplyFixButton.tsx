@@ -11,7 +11,7 @@ interface Props {
   description?: string;
 }
 
-type State = 'idle' | 'confirming' | 'applying' | 'done' | 'error';
+type State = 'idle' | 'confirming' | 'applying' | 'done' | 'already_applied' | 'error';
 
 export function ApplyFixButton({ agentId, agentName, errorType, description }: Props) {
   const [state, setState]  = useState<State>('idle');
@@ -30,8 +30,13 @@ export function ApplyFixButton({ agentId, agentName, errorType, description }: P
         body:    JSON.stringify({ errorType, description }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Apply failed');
-      setState('done');
+      if (res.status === 409) {
+        setState('already_applied');
+      } else if (!res.ok) {
+        throw new Error(data.error ?? 'Apply failed');
+      } else {
+        setState('done');
+      }
     } catch (e) {
       setErrMsg(String(e).replace('Error: ', ''));
       setState('error');
@@ -42,6 +47,14 @@ export function ApplyFixButton({ agentId, agentName, errorType, description }: P
     return (
       <span className="inline-flex items-center gap-1 text-xs text-ok font-medium">
         ✓ Applied to {agentName}
+      </span>
+    );
+  }
+
+  if (state === 'already_applied') {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-ok font-medium">
+        ✓ Already applied
       </span>
     );
   }

@@ -20,7 +20,7 @@ if (!webhookUrl) {
   process.exit(1);
 }
 
-const CONCURRENCY = 3;
+
 const DELAY_MS = 2000;
 
 function sleep(ms: number) {

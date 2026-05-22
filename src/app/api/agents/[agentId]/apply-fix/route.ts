@@ -24,6 +24,7 @@ const ULTRAVOX_API = 'https://api.ultravox.ai/api';
 // HARD ALLOWLIST — never expand without explicit operator consent
 const ALLOWED_AGENTS: Record<string, string> = {
   '428d7591-3ba5-4b60-8aa5-a92012d12451': 'NECTOR Demo',
+  '0a5b5ccc-4f75-456c-94c8-f9e7293f9d81': 'Davansh_Investment_inbound',
 };
 
 export async function POST(

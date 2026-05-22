@@ -40,7 +40,6 @@ async function syncCalls() {
   const BATCH = 100;
   let synced = 0;
   let msgTotal = 0;
-  let skippedMessages = 0;
 
   for (let i = 0; i < calls.length; i += BATCH) {
     const batch = calls.slice(i, i + BATCH);

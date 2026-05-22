@@ -8,7 +8,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
-import Anthropic from '@anthropic-ai/sdk';
+
 import ws from 'ws';
 import dotenv from 'dotenv';
 import { resolve } from 'path';
@@ -22,7 +22,7 @@ const supabase = createClient(
   { realtime: { transport: ws as any } }
 );
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+
 
 const server = new McpServer({
   name: 'voxray',

@@ -31,37 +31,39 @@ export function LogFixButton({ agentName, errorType }: Props) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="text-xs text-blue-600 hover:text-blue-800 underline"
+        className="text-xs text-accent hover:underline transition-colors"
       >
-        Log fix
+        log fix
       </button>
       {open && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <form onSubmit={submit} className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="font-bold text-gray-900 mb-1">Log Prompt Fix</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              <span className="font-mono text-gray-700">{errorType}</span> · {agentName}
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <form onSubmit={submit} className="bg-canvas border border-border rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h3 className="font-bold text-ink mb-1 text-lg">Log Prompt Fix</h3>
+            <p className="text-sm text-ink-2 mb-4 pb-4 border-b border-border-subtle">
+              <span className="font-mono font-medium text-ink bg-surface px-1.5 py-0.5 rounded border border-border">{errorType}</span>
+              <span className="mx-2 text-ink-3">·</span>
+              {agentName}
             </p>
             <textarea
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
               placeholder="What did you change in the prompt? (optional)"
-              className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none h-24 focus:outline-none focus:border-gray-400"
+              className="w-full bg-surface border border-border rounded-lg p-3 text-sm text-ink resize-none h-24 focus:outline-none focus:border-accent transition-colors"
             />
-            <div className="flex gap-2 mt-4">
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex-1 bg-gray-900 text-white py-2 rounded-lg text-sm font-medium"
-              >
-                {saving ? 'Saving…' : 'Log fix (today)'}
-              </button>
+            <div className="flex gap-3 mt-5">
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
+                className="flex-1 px-4 py-2 text-sm font-semibold text-ink-2 bg-surface hover:bg-surface-2 border border-border rounded-lg transition-colors"
               >
                 Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex-1 px-4 py-2 bg-ink text-canvas rounded-lg text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Log fix (today)'}
               </button>
             </div>
           </form>

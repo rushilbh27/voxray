@@ -69,6 +69,11 @@ export default async function CallDetailPage({ params }: Props) {
                   {call.status}
                 </span>
                 <h1 className="text-lg font-semibold text-ink truncate">{call.client_name}</h1>
+                {call.customer_name && (
+                  <span className="text-sm text-ink-2 font-medium">
+                    · {call.customer_name as string}
+                  </span>
+                )}
               </div>
               <div className="text-xs font-mono text-ink-3">{call.call_id}</div>
               {shortSummary && (
@@ -272,14 +277,17 @@ export default async function CallDetailPage({ params }: Props) {
                   <span className="text-xs font-semibold text-ink-2 uppercase tracking-wide">Enrichment</span>
                 </div>
                 <div className="p-5 grid grid-cols-2 gap-3">
-                  {Object.entries(call.extracted_data as Record<string, string>)
-                    .filter(([, v]) => v)
-                    .map(([key, value]) => (
-                      <div key={key}>
-                        <div className="text-[11px] text-ink-3 uppercase tracking-wider mb-0.5">{key.replace(/_/g, ' ')}</div>
-                        <div className="text-sm text-ink truncate">{value}</div>
-                      </div>
-                    ))}
+                  {Object.entries(call.extracted_data as Record<string, unknown>)
+                    .filter(([, v]) => v != null && v !== '')
+                    .map(([key, value]) => {
+                      const displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+                      return (
+                        <div key={key}>
+                          <div className="text-[11px] text-ink-3 uppercase tracking-wider mb-0.5">{key.replace(/_/g, ' ')}</div>
+                          <div className="text-sm text-ink truncate" title={displayValue}>{displayValue}</div>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             )}

@@ -87,14 +87,14 @@ Live: https://voxray.vercel.app
 | Sales_AI | `65ae3d7d-5a1f-4880-89f4-1ce690efae89` | ✅ YES (11/11) |
 | Debt-Collector-Agent-UG | `52db715f-fc68-4265-a354-7f64a27cd3b9` | ✅ YES (7 patches verified) |
 | Cold_Outreach_AI | `74c435db-0382-45d4-8f84-65343c0dde5f` | ✅ YES (8 patches verified) |
-| NECTOR_DEMO_TEST | `428d7591-3ba5-4b60-8aa5-a92012d12451` | ❌ NO — UCC complaints agent, needs own error types |
+| NECTOR_DEMO_TEST | `428d7591-3ba5-4b60-8aa5-a92012d12451` | ✅ YES (4 patches: wrong_info, accepted_garbled_audio, no_save_answers, stacked_questions) |
 | Davansh_Investment_inbound | `0a5b5ccc-4f75-456c-94c8-f9e7293f9d81` | ✅ YES (2 patches verified) |
 | Edifice_Properties_inbound | `bfea3820-a447-4444-bd41-53ff919bbfe3` | ✅ YES (2 patches verified) |
-| Ramco_Gas_inbound | `5da7bc3e-e653-4dd6-9402-bbe9b5b3a7b1` | ❓ Not checked |
-| Real_Estate_AI_Sales_Agent | `efecb97c-2937-4507-a550-8db5e8882c82` | ⚠️ Only `stacked_questions` matches |
+| Ramco_Gas_inbound | `5da7bc3e-e653-4dd6-9402-bbe9b5b3a7b1` | ✅ No active errors — no patches needed |
+| Real_Estate_AI_Sales_Agent | `efecb97c-2937-4507-a550-8db5e8882c82` | ✅ YES (3 patches: broke_promise, wrong_info, no_save_answers) |
 | Debt_Collection_2 | `4be98966-7c89-4149-8f10-e2ac16291f66` | ✅ YES (same prompt as Debt-Collector-Agent-UG) |
-| Follow_Up_Debt_Collection_Bot | `3983f5c0-4a95-42e3-a95a-9dbe57e11c78` | ❓ Not checked |
-| Debt_Collection_Welcome-Bot | `2dfe90c6-569f-49e0-84f4-e67d9e770255` | ❓ Not checked |
+| Follow_Up_Debt_Collection_Bot | `3983f5c0-4a95-42e3-a95a-9dbe57e11c78` | ✅ No active errors — no patches needed |
+| Debt_Collection_Welcome-Bot | `2dfe90c6-569f-49e0-84f4-e67d9e770255` | ✅ No active errors — no patches needed |
 
 ---
 
@@ -217,18 +217,20 @@ CRON_SECRET=                # optional
 
 All major agents now have verified fix-spec patches. See agent table above.
 
-## NEXT SESSION: Remaining Agents + NECTOR Demo (lower priority)
+## ✅ COMPLETED: NECTOR Demo + Real Estate AI Fix-Specs (session 2)
 
-**Still needed:**
-1. **NECTOR Demo** — UCC complaints agent (`428d7591`). Has 0/N patch matches because it's a completely different domain. Needs its own error types defined first. Look at what errors Haiku detects for this agent in DB, then write matching patches.
-2. **Real_Estate_AI_Sales_Agent** — only `stacked_questions` matches. Check prompt for `wrong_info`, `broke_promise`, `no_save_answers` text equivalents.
-3. **Ramco_Gas_inbound** — small prompt (5.3k chars), not checked. Likely inbound receptionist.
-4. **Follow_Up_Debt_Collection_Bot** / **Debt_Collection_Welcome-Bot** — different from main debt collector. Check their prompts against existing debt specs.
+- NECTOR Demo: 4 patches (wrong_info, accepted_garbled_audio, no_save_answers, stacked_questions)
+- Real Estate AI: 3 patches (broke_promise, wrong_info, no_save_answers)
+- Ramco Gas / Follow-Up Debt / Debt Welcome: healthy, no active errors, no patches needed
 
----
+## NEXT SESSION: Remaining Work
 
-## Other Potential Next Steps (lower priority)
+**Higher priority:**
+1. **Verify NECTOR Demo + Real Estate patches** — patches written but need to open agent profile page in UI and confirm `verifyPatch()` finds line numbers in live prompts.
+2. **Before/after comparison on agent profile** — `get_comparison_data(date)` RPC exists, UI removed from dashboard. Add `?compare=YYYY-MM-DD` to `/dashboard/[agentId]`.
+3. **Expand auto-apply allowlist** — when FP rate < 10% for an error type on a production agent, consider adding that agent. Currently NECTOR Demo only.
 
-- **Before/after comparison** — `?compare=YYYY-MM-DD` was removed from dashboard; move it to agent profile page where it makes more sense (per-agent before/after)
-- **README update** — document the agent profile flow for new users
-- **Expand auto-apply allowlist** — when FP rate < 10% for an error type on a production agent, consider adding that agent to the allowlist. Currently NECTOR Demo only.
+**Lower priority:**
+- README update — document agent profile flow
+- Customer name display — `customer_name` from Llama enrichment, not surfaced in UI
+- Call recordings — `GET /api/calls/{id}/recording` available, not exposed in UI

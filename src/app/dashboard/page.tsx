@@ -6,6 +6,7 @@ import { TrendChart } from '@/app/components/TrendChart';
 import { AckAlertButton } from '@/app/components/AckAlertButton';
 import { Nav } from '@/app/components/Nav';
 import { PipelineStrip } from '@/app/components/PipelineStrip';
+import { LiveTracker } from '@/app/components/LiveTracker';
 
 export const revalidate = 60;
 
@@ -42,13 +43,14 @@ export default async function Dashboard({
   if (clientFilter) callLogQuery = callLogQuery.eq('client_name', clientFilter);
   if (statusFilter) callLogQuery = callLogQuery.eq('status', statusFilter);
 
-  // ── Single parallel fetch — everything at once ────────────────────────────
+  // ── All fetches in one parallel batch — zero serial queries ──────────────────
   const [
     { data: aggRows },
     { data: clientRows },
     { data: weeklyRows },
     { data: pipelineRows },
     { data: agentSummaryRows },
+    { data: agentIdRows },
     activeAlerts,
     { data: calls, count: filteredTotal },
   ] = await Promise.all([
@@ -57,6 +59,13 @@ export default async function Dashboard({
     supabaseAdmin.rpc('get_weekly_trend'),
     supabaseAdmin.rpc('get_pipeline_stats'),
     supabaseAdmin.rpc('get_agent_error_summary'),
+    // Scale-safe: order newest first, 500 rows catches all distinct agents
+    supabaseAdmin
+      .from('ultravox_calls')
+      .select('client_name, agent_id')
+      .not('agent_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(500),
     import('@/lib/alert-engine').then((m) => m.runAlertCheck()).catch(() => [] as import('@/lib/alert-engine').FiredAlert[]),
     callLogQuery,
   ]);
@@ -94,18 +103,14 @@ export default async function Dashboard({
     top_error_type:   (row.top_error_type as string) ?? null,
   }));
 
-  // Build agent_id lookup from a distinct query
-  const { data: agentIdRows } = await supabaseAdmin
-    .from('ultravox_calls')
-    .select('client_name, agent_id')
-    .not('agent_id', 'is', null)
-    .limit(2000);
+  // Build agent_id lookup (scale-safe)
   const agentIdMap = new Map<string, string>();
   for (const r of (agentIdRows ?? []) as Array<Record<string, unknown>>) {
     const name = r.client_name as string;
     const aid = r.agent_id as string;
     if (name && aid && !agentIdMap.has(name)) agentIdMap.set(name, aid);
   }
+
 
   // ── Client breakdown for filter pills ──────────────────────────────────────
   const clients = (clientRows as Array<Record<string, unknown>> ?? []).map(
@@ -158,6 +163,7 @@ export default async function Dashboard({
       <Nav activeCalls={activeCalls} />
 
       <main className="max-w-7xl mx-auto px-6 pb-16">
+        <LiveTracker />
 
         {/* ── STAT STRIP ─────────────────────────────────────────────────────── */}
         <div className="py-6 border-b border-border mb-8 grid grid-cols-4 md:grid-cols-7 gap-6">
