@@ -104,6 +104,7 @@ export default async function Dashboard({
   }));
 
     // Static fallback: known client_name → agent UUID (for agents whose calls have agent_id = null in DB)
+  // Note: "Shell Gas Uganda" is the actual DB client_name for the Ramco Gas agent.
   const KNOWN_AGENT_IDS: Record<string, string> = {
     'Sales AI':                        '65ae3d7d-5a1f-4880-89f4-1ce690efae89',
     'Debt Collector':                  '52db715f-fc68-4265-a354-7f64a27cd3b9',
@@ -111,12 +112,16 @@ export default async function Dashboard({
     'NECTOR Demo':                     '428d7591-3ba5-4b60-8aa5-a92012d12451',
     'Davansh_Investment_inbound':      '0a5b5ccc-4f75-456c-94c8-f9e7293f9d81',
     'Edifice_Properties_inbound':      'bfea3820-a447-4444-bd41-53ff919bbfe3',
+    'Shell Gas Uganda':                '5da7bc3e-e653-4dd6-9402-bbe9b5b3a7b1', // Ramco Gas agent
     'Ramco_Gas_inbound':               '5da7bc3e-e653-4dd6-9402-bbe9b5b3a7b1',
     'Real_Estate_AI_Sales_Agent':      'efecb97c-2937-4507-a550-8db5e8882c82',
     'Debt_Collection_2':               '4be98966-7c89-4149-8f10-e2ac16291f66',
     'Follow_Up_Debt_Collection_Bot':   '3983f5c0-4a95-42e3-a95a-9dbe57e11c78',
     'Debt_Collection_Welcome-Bot':     '2dfe90c6-569f-49e0-84f4-e67d9e770255',
   };
+
+  // Client names to exclude from agent grid — noise, test calls, or unknown agent
+  const EXCLUDED_CLIENTS = new Set(['Unknown', 'Acme Corp', 'Uganda Communications Commission', '']);
 
   // Build agent_id lookup — DB data first, static map as fallback
   const agentIdMap = new Map<string, string>(Object.entries(KNOWN_AGENT_IDS));
@@ -126,13 +131,13 @@ export default async function Dashboard({
     if (name && aid) agentIdMap.set(name, aid); // DB data wins over static
   }
 
-  // Ensure ALL agents appear in the grid using clientRows (has every client_name regardless of agent_id).
+  // Ensure ALL known agents appear in the grid using clientRows.
   // get_agent_error_summary() only returns agents with error data, so healthy agents get missed.
   const summaryNames = new Set(agentSummaries.map((s) => s.client_name));
   for (const [name, count] of (clientRows as Array<Record<string, unknown>> ?? []).map(
     (r) => [r.client_name as string, Number(r.count)] as [string, number]
   )) {
-    if (name && !summaryNames.has(name)) {
+    if (name && !EXCLUDED_CLIENTS.has(name) && !summaryNames.has(name)) {
       summaryNames.add(name);
       agentSummaries.push({
         client_name: name,
@@ -145,6 +150,10 @@ export default async function Dashboard({
       });
     }
   }
+  // Remove noise agents from error summary results too
+  const filteredSummaries = agentSummaries.filter((s) => !EXCLUDED_CLIENTS.has(s.client_name));
+  agentSummaries.length = 0;
+  agentSummaries.push(...filteredSummaries);
   // Sort: most calls first, ties broken by error rate desc
   agentSummaries.sort((a, b) => b.total_calls - a.total_calls || b.error_rate - a.error_rate);
 
