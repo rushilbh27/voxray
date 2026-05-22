@@ -1,0 +1,361 @@
+# Voxray — Project Status Report
+
+> Last updated: 2026-05-22  
+> Update this file every session. Not a handoff bridge — a permanent record of what was built, where we stand, and where we're going.
+
+---
+
+## What Voxray Is
+
+Call intelligence dashboard for Ultravox voice agents deployed for Uganda businesses. Not a metrics viewer.
+
+**Core purpose:** Detect exact agent mistakes per call → surface error patterns → suggest prompt fixes → close the feedback loop before clients report problems.
+
+**Live:** https://voxray.vercel.app  
+**Repo:** https://github.com/rushilbh27/voxray
+
+---
+
+## The Ideal System (End State)
+
+When Voxray is fully built, this is how it works end-to-end:
+
+```
+Call ends on Ultravox
+    ↓  webhook fires within seconds
+Voxray analyzes with Claude Haiku → detects exact errors
+    ↓
+Per-agent profile page shows:
+  - Every error type the agent made (count, trend, precision)
+  - Exact transcript quote showing WHAT the agent said
+  - Prompt patch: find/replace with verified line number
+  - Apply Fix button (with pre-flight verification)
+    ↓
+Operator applies patch → Ultravox prompt updates
+    ↓
+Voxray re-analyzes recent calls → shows error rate drop by prompt version
+    ↓
+Proactive alerts catch spikes before client sees them
+    ↓
+Feedback loop: every fix has before/after proof
+```
+
+**The ideal system has zero manual review.** An operator spends 5 minutes a day: reviews top errors, applies verified patches, watches error rate fall. No call listening required.
+
+---
+
+## Stack
+
+| Layer | Tech |
+|-------|------|
+| Framework | Next.js 16 App Router + TypeScript |
+| Styling | Tailwind 4 + OKLCH design tokens |
+| Database | Supabase (Postgres) |
+| AI — Error Detection | Claude Haiku 4.5 (primary, authoritative) |
+| AI — Transcript Enrichment | Llama 3.2 self-hosted (audio → names, no error detection) |
+| Voice Platform | Ultravox (GET only — never mutate prod) |
+| Alerts | Telegram Bot API |
+| Deployment | Vercel (Hobby plan — daily cron limit) |
+
+---
+
+## Agents in System
+
+| Agent | UUID | Type | Fix-specs status |
+|-------|------|------|-----------------|
+| Sales_AI | `65ae3d7d` | Outbound sales | ✅ 11/11 patches verified |
+| Debt-Collector-Agent-UG | `52db715f` | Debt collection | ✅ 7 patches verified |
+| Debt_Collection_2 | `4be98966` | Debt collection | ✅ Same prompt as above |
+| Cold_Outreach_AI | `74c435db` | Cold outreach | ✅ 8 patches verified |
+| Davansh_Investment_inbound | `0a5b5ccc` | Inbound receptionist | ✅ 2 patches verified |
+| Edifice_Properties_inbound | `bfea3820` | Inbound receptionist | ✅ 2 patches verified |
+| NECTOR_DEMO_TEST | `428d7591` | UCC complaints demo | ❌ 0 patches — needs own error types (different domain) |
+| Real_Estate_AI_Sales_Agent | `efecb97c` | Outbound sales | ⚠️ 1 patch (stacked_questions only) |
+| Ramco_Gas_inbound | `5da7bc3e` | Inbound receptionist | ❓ Not checked |
+| Follow_Up_Debt_Collection_Bot | `3983f5c0` | Debt follow-up | ❓ Not checked |
+| Debt_Collection_Welcome-Bot | `2dfe90c6` | Debt welcome | ❓ Not checked |
+
+**Apply-fix allowlist:** NECTOR Demo only. All other agents: patches show as suggestions, apply button never appears, API returns 403.
+
+---
+
+## Data Volume (as of last check)
+
+- **1,808+ calls** synced from Ultravox
+- **639+ calls analyzed** — ~52% error rate
+- **11 agents** monitored
+- **~100 calls/day** from live Uganda clients
+
+---
+
+## What Has Been Built — Full History
+
+### Phase 1 — Foundation (`758f8a9` → `d0b3b73`)
+- Initial scaffold: Next.js + Supabase + Ultravox sync
+- Call detail page + transcript view
+- 1803 calls synced, pagination, client name detection
+
+### Phase 2 — Error Detection (`7fdbe4b` → `4073d52`)
+- Claude Haiku error detection per call (`call_errors` JSONB)
+- Error dashboard with leaderboard
+- Unified dashboard, MCP server, CLI, API v1 (`GET /api/v1/stats`, `/errors`, `/calls`, `/export`)
+- Auth: Supabase SSR login, protected dashboard
+
+### Phase 3 — Fix Suggestions + Observability (`83520fb` → `a188985`)
+- Structured Find→Replace fix specs with copy buttons
+- Live prompt check: patches show "already fixed" if find text missing
+- Proactive alert engine: 6 rules, Telegram delivery
+- Trend chart (12-week weekly error rate per agent)
+- CSV export, eval framework (precision per error type)
+- False positive tracking with FP buttons per call
+
+### Phase 4 — Pipeline Reliability (`ab0fe03` → `f1786a7`)
+- 429 retry with 3x backoff (5s/10s/20s)
+- Concurrency reduced 5→2 for rate limits
+- `jsonrepair` for malformed LLM JSON
+- Batch-claim before processing → race condition fixed (parallel terminals safe)
+- `max_tokens` 2048→4096
+
+### Phase 5 — Real-Time + Llama Enrichment (`3a0901a` → `f490117`)
+- Ultravox webhook (`POST /api/webhook/call-ended`) — fires within seconds
+  - HMAC-SHA256 signature verification
+  - ACK 204 instantly → background pipeline
+  - Auto-detects new agents from webhook payload
+- Llama 3.2 audio pipeline: `raw_transcript`, `customer_name`, `agent_name` via webhook
+- Haiku primary + Llama enrichment-only architecture
+- Auto-apply prompt fix for NECTOR Demo (first apply-fix implementation)
+- Cron: daily (Hobby plan limit)
+- Before/after comparison (removed from dashboard, available per-agent)
+
+### Phase 6 — Agent Profile Redesign (`3d5d104`)
+- **Main dashboard** → replaced error leaderboard with **agent grid** (cards per agent)
+- **`/dashboard/[agentId]`** — per-agent profile page:
+  - Agent stat strip (total calls, analyzed, error rate, critical count)
+  - Error leaderboard filtered to THAT agent only
+  - Patches verified against THAT agent's actual prompt (not hardcoded agent 0)
+  - Find text verified badge + exact line number in prompt
+  - FixBlock (find/replace UI with copy buttons)
+  - ApplyFixButton (NECTOR Demo only, only when find text verified)
+  - ApplyAllFixesButton — one click applies all fixable errors
+  - Worst calls panel for the agent
+  - Prompt version chart (error rate per prompt hash)
+  - Collapsible prompt viewer (full system prompt)
+  - Loading skeleton
+- `verifyPatch()` in fix-specs.ts — checks find text exists, returns line number + context
+- `fetchAllAgentPrompts()` in ultravox.ts — fetches ALL agents dynamically
+- Apply-fix API pre-flight check — returns 409 if find text not in prompt
+- `get_agent_error_summary()` Supabase RPC for agent grid
+- All queries parallelized with `Promise.all`
+- OKLCH warm palette, Tailwind 4 design tokens
+
+### Phase 7 — Fix-Specs for Non-Sales Agents (`b8f81d3`)
+- Fetched and read ALL agent system prompts via Ultravox GET API
+- Fixed Sales AI `accepted_garbled_audio`: capitalization mismatch `DO NOT` → `Do NOT`
+- Wrote 13 new patches across 5 agents (18 find strings verified against live prompts)
+- Multi-agent patch architecture: each error type has N patches, each with different find string targeting different agent prompt text
+- `getApplicablePatches()` returns only patches whose find text exists in current agent's prompt
+- Verified NECTOR Demo has zero matches (untouched, different domain)
+
+**New patches by agent:**
+| Agent | Error types patched |
+|-------|-------------------|
+| Debt-Collector-Agent-UG | `no_save_debt`, `calculated_balance`, `invented_amount`, `no_product_context`, `no_commitment`, `accepted_vague_date` |
+| Cold_Outreach_AI | `accepted_garbled_audio`, `wrong_opening`, `pushed_back`, `no_name_collected`, `restart_loop` |
+| Davansh + Edifice | `wrong_info`, `no_save_answers` |
+
+### Phase 8 — Transcript Examples on Agent Profile (`cc21216`)
+- `example_line` (`agent_line` from `call_errors` JSONB) was fetched from `get_error_frequency` RPC but never rendered
+- Added "Agent said" block inline on each error row — shows exact quote of what agent said when error fired
+
+---
+
+## Current State — What Works Right Now
+
+### Data Pipeline
+- ✅ 1808+ calls synced, cursor-paginated
+- ✅ 639+ analyzed, ~52% error rate
+- ✅ Claude Haiku: primary error detection, authoritative
+- ✅ Llama 3.2: async audio enrichment (transcript + names, NOT error detection)
+- ✅ Webhook: real-time analysis within seconds of call ending
+- ✅ Daily cron: 30 unanalyzed calls/run + sync + alert check
+- ✅ Race condition safe (batch-claim pattern)
+- ✅ jsonrepair for LLM JSON defects
+- ✅ 3x retry with exponential backoff
+
+### Error Detection
+- ✅ 21 error types across Sales/Debt/Cold Outreach/Inbound
+- ✅ Agent-type-aware rules (Haiku prompt varies by agent)
+- ✅ `accepted_unknown_location` — detects garbled area names
+- ✅ False-positive guard: `no_save_answers`/`no_save_debt` only flags if 4+ agent turns AND no Tool message in final 4 messages
+- ✅ Confidence scoring (0.0–1.0 per error)
+- ✅ `goal_achieved` field per call
+
+### Dashboard
+- ✅ `/dashboard` — agent grid with per-agent error rates
+- ✅ `/dashboard/[agentId]` — per-agent profile:
+  - Error leaderboard (agent-only)
+  - **"Agent said" transcript quote per error**
+  - Verified prompt patches with line numbers
+  - Find/replace UI with copy buttons
+  - Apply Fix (NECTOR Demo only)
+  - Apply All Fixes button
+  - Worst calls panel
+  - Prompt version chart
+  - Full prompt viewer
+- ✅ Stat strip (7 metrics)
+- ✅ AI pipeline strip (p50/p95 latency, cost, success rate)
+- ✅ Error rate trend chart (12 weeks, per agent)
+- ✅ False positive tracking + precision badges per error type
+- ✅ Error velocity sparklines (8-week trend per error type)
+- ✅ Eval framework (precision, FP rate, confidence, cost/week)
+
+### Alerting
+- ✅ 6 alert rules (garbled burst, location failures, no-save burst, debt no-save, critical error, wrong cold opening)
+- ✅ Telegram delivery
+- ✅ 4h/24h acknowledgment (suppresses repeats)
+- ✅ Dashboard alert banner
+
+### Other
+- ✅ REST API v1 (`/stats`, `/errors`, `/calls`, `/calls/:id`, `/export`)
+- ✅ MCP server
+- ✅ CLI (`npm run voxray stats/errors/monitor`)
+- ✅ Fix log (`prompt_fixes` table)
+- ✅ Supabase SSR auth (login page)
+- ✅ Loading skeletons (instant navigation feedback)
+- ✅ LLM observability: every Haiku call traced (latency, tokens, cost) in `llm_traces`
+- ✅ Prompt versioning: SHA-256 hash per call → error rate by prompt version
+
+---
+
+## Fix-Specs Coverage
+
+### How it works
+Each error type has patches (find→replace strings). On the agent profile page, `verifyPatch()` checks if find text exists in the current agent's actual live prompt. If yes → show patch with line number, enable apply. If no → show "already fixed."
+
+### Coverage status
+
+| Error Type | Sales AI | Debt Collector | Cold Outreach | Davansh | Edifice |
+|-----------|----------|---------------|--------------|---------|---------|
+| `accepted_unknown_location` | ✅ | — | — | — | — |
+| `accepted_garbled_audio` | ✅ | — | ✅ | — | — |
+| `no_save_answers` | ✅ | — | ✅ | ✅ | ✅ |
+| `no_save_debt` | — | ✅ | — | — | — |
+| `no_consultation` | ✅ | — | — | — | — |
+| `stacked_questions` | ✅ | — | ✅ | — | — |
+| `skipped_repeat_rule` | ✅ | — | ✅ | — | — |
+| `accepted_past_date` | ✅ | ✅ | — | — | — |
+| `accepted_vague_date` | ✅ | ✅ | — | — | — |
+| `broke_promise` | ✅ | — | — | — | — |
+| `wrong_opening` | ✅ | — | ✅ | — | — |
+| `restart_loop` | ✅ | — | ✅ | — | — |
+| `no_name_collected` | ✅ | — | ✅ | — | — |
+| `calculated_balance` | ✅ | ✅ | — | — | — |
+| `invented_amount` | ✅ | ✅ | — | — | — |
+| `no_product_context` | ✅ | ✅ | — | — | — |
+| `spoke_luganda` | ✅ | already fixed | — | — | — |
+| `wrong_person_handling` | ✅ | — | — | — | — |
+| `no_commitment` | ✅ | ✅ | — | — | — |
+| `pushed_back` | ✅ | — | ✅ | — | — |
+| `wrong_info` | ✅ | — | — | ✅ | ✅ |
+| `wrong_call_type` | ✅ | — | — | — | — |
+
+`—` = error type doesn't apply to that agent OR not yet written.
+
+---
+
+## Supabase Schema
+
+### Tables
+| Table | Purpose |
+|-------|---------|
+| `ultravox_calls` | All calls + `call_errors` JSONB + `prompt_hash` + `analysis_status` |
+| `ultravox_messages` | Per-message transcripts |
+| `llm_traces` | Every Haiku call: `latency_ms`, `input_tokens`, `output_tokens`, `cost_usd`, `model` |
+| `prompt_versions` | `prompt_hash → first_seen / last_seen` per agent |
+| `false_positives` | Human FP marks: `call_id`, `error_type` |
+| `prompt_fixes` | Fix log: `agent`, `error_type`, `description`, `applied_at` |
+| `alert_acks` | Suppression records: `rule_id`, `agent`, `ack_until` |
+
+### RPC Functions
+| Function | Purpose |
+|----------|---------|
+| `get_dashboard_aggregates()` | All stat strip counts in one query |
+| `get_error_frequency(since, agent)` | Error leaderboard from JSONB — includes `example_line` (agent_line) |
+| `get_client_breakdown()` | Agent call counts |
+| `get_weekly_trend()` | Weekly error rate per agent (12wk) |
+| `get_comparison_data(date)` | Before/after error counts |
+| `get_pipeline_stats()` | Haiku p50/p95 latency, cost, success rate |
+| `get_eval_stats()` | FP count + total flags per error type |
+| `get_prompt_version_trend(agent)` | Error rate per prompt hash |
+| `get_error_velocity()` | Weekly count per error type (sparklines) |
+| `get_agent_error_summary()` | Per-agent stats for agent grid |
+
+---
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/app/dashboard/page.tsx` | Agent grid |
+| `src/app/dashboard/[agentId]/page.tsx` | Per-agent profile (errors + patches + transcript examples) |
+| `src/app/dashboard/[agentId]/PromptViewer.tsx` | Collapsible prompt viewer |
+| `src/app/dashboard/[agentId]/ApplyAllFixesButton.tsx` | Batch apply all fixes |
+| `src/lib/fix-specs.ts` | All patch definitions + `verifyPatch()` + `getApplicablePatches()` |
+| `src/lib/error-analyzer.ts` | Haiku prompts, 21 error types, confidence scoring |
+| `src/lib/call-analyzer.ts` | Unified pipeline: Haiku primary + Llama enrichment + prompt hash |
+| `src/lib/ultravox.ts` | Ultravox API client + `fetchAllAgentPrompts()` |
+| `src/app/api/webhook/call-ended/route.ts` | Real-time webhook: ACK → background pipeline |
+| `src/app/api/agents/[agentId]/apply-fix/route.ts` | Apply fix (NECTOR Demo only, pre-flight verify) |
+| `src/app/api/cron/route.ts` | Daily: 30 calls + sync + alerts |
+| `src/app/components/FixBlock.tsx` | Find/replace UI with copy buttons |
+| `src/app/components/TrendChart.tsx` | 12-week error rate chart |
+| `src/app/components/ApplyFixButton.tsx` | One-click apply (NECTOR Demo only) |
+
+---
+
+## What's Left — Prioritized
+
+### High priority
+- [ ] **NECTOR Demo fix-specs** — UCC complaints agent. Different domain, different errors. Need to: (1) look at what Haiku detects for this agent in DB, (2) read its prompt, (3) write matching patches. Currently 0 patches.
+- [ ] **Real_Estate_AI_Sales_Agent** — only `stacked_questions` matches. Needs wrong_info, broke_promise, no_save_answers patches matched to its prompt text.
+- [ ] **Ramco_Gas_inbound** — 5.3k char prompt, not checked. Likely has `wrong_info`, inbound save issues.
+
+### Medium priority
+- [ ] **Follow_Up_Debt_Collection_Bot** — debt follow-up bot, different prompt from main debt collector. Check which debt error specs match.
+- [ ] **Debt_Collection_Welcome-Bot** — welcome bot, 12k char prompt. Check which specs match.
+- [ ] **Before/after comparison on agent profile** — `get_comparison_data(date)` RPC exists but UI was removed from dashboard. Add `?compare=YYYY-MM-DD` to agent profile page.
+- [ ] **Expand apply-fix allowlist** — when FP rate < 10% for an error type on a production agent, consider adding that agent. Currently NECTOR Demo only.
+
+### Low priority
+- [ ] **README update** — document agent profile flow for new users
+- [ ] **Customer name display** — `customer_name` from Llama enrichment available but not surfaced in call detail or worst calls panel
+- [ ] **Call recordings** — `GET /api/calls/{id}/recording` available, not exposed in UI
+
+---
+
+## Production Safety Rules (Never Change These)
+
+**NEVER POST/PATCH/DELETE to `api.ultravox.ai`.**  
+Live Uganda customers. ~100 calls/day. GET only.
+
+Exception: `POST /api/agents/[agentId]/apply-fix` — NECTOR Demo (`428d7591`) only.  
+Hard allowlist in route.ts → 403 for any other agent ID.  
+Pre-flight `verifyPatch()` runs before any PATCH.
+
+---
+
+## Env Vars
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+ULTRAVOX_API_KEY=
+ANTHROPIC_API_KEY=
+VOXRAY_URL=https://voxray.vercel.app
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+ULTRAVOX_WEBHOOK_SECRET=
+VOXRAY_API_KEY=             # optional — API v1 auth
+CRON_SECRET=                # optional — cron route auth
+```
