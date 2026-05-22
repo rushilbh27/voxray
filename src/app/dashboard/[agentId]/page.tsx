@@ -323,10 +323,18 @@ export default async function AgentProfilePage({
                               </div>
                             )}
 
+                            {/* Transcript example */}
+                            {err.example_line && (
+                              <div className="mt-3 mb-1 px-3 py-2 bg-canvas border border-border-subtle rounded-lg">
+                                <div className="text-[10px] font-semibold text-ink-3 uppercase tracking-wider mb-1">Agent said</div>
+                                <div className="text-xs text-ink-2 italic leading-snug">"{err.example_line}"</div>
+                              </div>
+                            )}
+
                             <div className="flex items-center justify-between mt-2">
                               <div className="flex items-center gap-3 flex-wrap">
                                 <Link href={`/calls/${err.example_call}`} className="text-xs text-accent hover:underline">
-                                  example →
+                                  full call →
                                 </Link>
                                 <LogFixButton agentName={clientName} errorType={err.type} />
                                 {canApply && (
