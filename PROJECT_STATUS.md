@@ -1,6 +1,6 @@
 # Voxray — Project Status Report
 
-> Last updated: 2026-05-23 (session 4 — UI/UX pass: dark mode + animations + display names)  
+> Last updated: 2026-05-23 (session 5 — dark theme completion: FixBlock, AnalyzeButton, OutcomeChart, ErrorHeatmap, loading skeleton, mobile)  
 > Update this file every session. Not a handoff bridge — a permanent record of what was built, where we stand, and where we're going.
 
 ---
@@ -230,6 +230,23 @@ Key commits: `ee62fa1`, `8ce3501`, `66e6527`, `8a75e62`, `8c5b05e`
 - `get_comparison_data` RPC broken → replaced with direct two-query JS computation
 - Playwright test artifacts added to `.gitignore`
 
+### Phase 12 — Dark Theme Completion + Mobile + Empty States (session 5)
+Key commit: `e0ccdc6`
+
+**FixBlock.tsx:** Complete rewrite. Was entirely hardcoded light-mode Tailwind (`gray-*`, `red-*`, `green-*`). Now uses `crit-bg`/`ok-bg`/`border-border` OKLCH tokens. Find section uses `crit-bg` tones, Replace section uses `ok-bg` tones. Copy buttons use `border-border`/`text-ink-3`.
+
+**AnalyzeButton.tsx:** Replaced `blue-500`/`gray-900` hardcodes with `text-accent`/`bg-accent`/`text-ink-3` tokens.
+
+**OutcomeChart.tsx:** Fixed Recharts CSS variable refs — `var(--ink-3)` → `var(--color-ink-3)`, same for `surface`/`border`/`ink`. Converted OUTCOME_COLORS hex to OKLCH literals matching design palette (ok/warn/crit tokens).
+
+**ErrorHeatmap.tsx:** Label column now sticky (`sticky left-0 z-10 bg-surface`) — survives horizontal scroll on narrow screens. Added `minWidth: 480` to prevent table collapse.
+
+**`/calls/[id]/loading.tsx`:** Created. Chat-bubble transcript skeleton with alternating agent/user bubbles, call header card skeleton, right column skeleton — mirrors actual page layout.
+
+**Agent profile page:** Heatmap and outcome chart sections always render (not gated behind `length > 0`). Both have real empty states ("✓ No errors in last 30 days" / OutcomeChart handles its own empty). Compare grid changed `grid-cols-2` → `grid-cols-1 sm:grid-cols-2`.
+
+**Call detail page:** Breadcrumb fixed — was `href="/"` (broken), now `href="/dashboard"`.
+
 ### Phase 8 — Transcript Examples on Agent Profile (`cc21216`)
 - `example_line` (`agent_line` from `call_errors` JSONB) was fetched but never rendered
 - Added "Agent said" block inline on each error row
@@ -392,14 +409,12 @@ Each error type has patches (find→replace strings). On the agent profile page,
 
 ## What's Left — Prioritized
 
-### Next up: UI/UX pass continued (session 5)
-Dashboard grid + globals.css done. Remaining:
+### Next up: UI/UX pass — final pieces (session 6)
+Core dark theme done. Remaining:
 
-- [ ] **Agent profile** `/dashboard/[agentId]` — dark theme, section spacing, heatmap readability
-- [ ] **Call detail** `/calls/[id]` — transcript readability, inline error highlights in transcript
-- [ ] **Loading states** — skeletons dark-themed
-- [ ] **Empty states** — no-data views for heatmap/outcome chart
-- [ ] **Mobile** — responsive pass on all pages
+- [ ] **Call detail transcript readability** — messages run as a wall; consider collapsing long messages, role-color improvement, better visual rhythm between turns
+- [ ] **Agent profile loading skeleton** — current skeleton doesn't reflect heatmap/outcome/compare sections below fold
+- [ ] **Mobile** — deeper responsive audit on agent profile (stat strip 2-col fine, but error leaderboard + worst calls panel stacked may need spacing pass)
 
 ### Medium priority
 - [ ] **Shell Gas Uganda agent profile** — `client_name` is "Shell Gas Uganda" in DB but agent name at Ultravox is "Ramco_Gas_inbound". Heatmap/outcome data works. Fix-specs may not match since patches reference "Ramco Gas" client_name.

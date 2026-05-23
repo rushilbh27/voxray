@@ -220,23 +220,32 @@ All major agents now have verified fix-spec patches. See agent table above.
 - Nav, PipelineStrip, TrendChart restyled for dark theme
 - `criticalTotal` computed correctly from live alerts
 
+## ✅ COMPLETED: Dark Theme Completion + Mobile + Empty States (session 5)
+
+**What was built:**
+- `FixBlock.tsx` — full rewrite with OKLCH tokens. Was hardcoded `gray-*`/`red-*`/`green-*` (broken in dark mode). Find section = `crit-bg` tones, Replace = `ok-bg` tones.
+- `AnalyzeButton.tsx` — `blue-500`/`gray-900` → `accent`/`ink` tokens
+- `OutcomeChart.tsx` — fixed `var(--ink-3)` → `var(--color-ink-3)` throughout (Recharts resolves SVG attrs directly). OKLCH data colors matched to palette.
+- `ErrorHeatmap.tsx` — sticky label column during horizontal scroll. `minWidth: 480` on table.
+- `/calls/[id]/loading.tsx` — created. Chat-bubble transcript skeleton + call header + right column.
+- Agent profile: heatmap/outcome sections always show with proper empty states. Compare grid `sm:grid-cols-2`. 
+- Call detail: breadcrumb `href="/"` → `href="/dashboard"`.
+
+**Key commit:** `e0ccdc6`
+
 ---
 
-## NEXT SESSION: UI/UX Pass Continued (session 5)
+## NEXT SESSION: UI/UX Final Pass (session 6)
 
-**Goal:** Apply dark theme + polish to remaining pages.
+**Goal:** Final polish on remaining rough edges.
 
-**Pages in scope:**
-1. `/dashboard/[agentId]` — agent profile (heatmap, outcome chart, before/after, patches, worst calls)
-2. `/calls/[id]` — call detail, transcript, inline error highlights
+**In scope:**
+1. **Call detail transcript** — wall-of-text; consider collapsing long messages, better visual rhythm between turns
+2. **Agent profile loading skeleton** — doesn't reflect heatmap/outcome/compare below fold
+3. **Mobile audit** — error leaderboard + worst calls stacked, spacing pass
 
 **Known issues still open:**
-- Agent profile page not yet dark-themed — surfaces, borders, section spacing
-- Heatmap label column may truncate on small screens
-- Worst calls panel: customer name badge styling needs dark-theme update
-- Error type labels still use snake_case in some places on profile page
-- Call detail: transcript is wall-of-text, errors not highlighted inline
-
-**After UI/UX:**
+- Shell Gas Uganda client_name mismatch (see PROJECT_STATUS)
+- Real Estate AI + NECTOR Demo patch verification (run profile pages, check line numbers)
 - Expand auto-apply allowlist when FP rate confident
 - Call recordings in UI
