@@ -7,6 +7,9 @@ import { AckAlertButton } from '@/app/components/AckAlertButton';
 import { Nav } from '@/app/components/Nav';
 import { PipelineStrip } from '@/app/components/PipelineStrip';
 import { LiveTracker } from '@/app/components/LiveTracker';
+import { CountUp } from '@/app/components/CountUp';
+import { Reveal } from '@/app/components/Reveal';
+import { Sparkline } from '@/app/components/Sparkline';
 
 export const revalidate = 60;
 
@@ -17,7 +20,6 @@ interface SearchParams {
   client?: string;
   status?: string;
 }
-
 
 export default async function Dashboard({
   searchParams,
@@ -34,7 +36,6 @@ export default async function Dashboard({
   const statusFilter = params.status ?? '';
   const offset = (page - 1) * PAGE_SIZE;
 
-  // ── Build the paginated call-log query (filter-dependent) ─────────────────
   let callLogQuery = supabaseAdmin
     .from('ultravox_calls')
     .select('call_id, client_name, status, ended_reason, duration_seconds, error_count, critical_error_count, analysis_status, created_at', { count: 'exact' })
@@ -43,7 +44,6 @@ export default async function Dashboard({
   if (clientFilter) callLogQuery = callLogQuery.eq('client_name', clientFilter);
   if (statusFilter) callLogQuery = callLogQuery.eq('status', statusFilter);
 
-  // ── All fetches in one parallel batch — zero serial queries ──────────────────
   const [
     { data: aggRows },
     { data: clientRows },
@@ -59,7 +59,6 @@ export default async function Dashboard({
     supabaseAdmin.rpc('get_weekly_trend'),
     supabaseAdmin.rpc('get_pipeline_stats'),
     supabaseAdmin.rpc('get_agent_error_summary'),
-    // Scale-safe: order newest first, 500 rows catches all distinct agents
     supabaseAdmin
       .from('ultravox_calls')
       .select('client_name, agent_id')
@@ -82,6 +81,7 @@ export default async function Dashboard({
   const avgDuration     = Math.round(Number(agg?.avg_duration ?? 0));
   const successRate     = endedCount > 0 ? Math.round((successfulCount / endedCount) * 100) : 0;
   const errorRate       = totalAnalyzed > 0 ? Math.round((callsWithErrors / totalAnalyzed) * 100) : 0;
+  const criticalTotal   = activeAlerts.reduce((n, a) => n + (a.severity === 'critical' ? 1 : 0), 0);
 
   // ── Agent summary for grid ──────────────────────────────────────────────────
   interface AgentSummary {
@@ -103,8 +103,6 @@ export default async function Dashboard({
     top_error_type:   (row.top_error_type as string) ?? null,
   }));
 
-    // Static fallback: known client_name → agent UUID (for agents whose calls have agent_id = null in DB)
-  // Note: "Shell Gas Uganda" is the actual DB client_name for the Ramco Gas agent.
   const KNOWN_AGENT_IDS: Record<string, string> = {
     'Sales AI':                        '65ae3d7d-5a1f-4880-89f4-1ce690efae89',
     'Debt Collector':                  '52db715f-fc68-4265-a354-7f64a27cd3b9',
@@ -112,7 +110,7 @@ export default async function Dashboard({
     'NECTOR Demo':                     '428d7591-3ba5-4b60-8aa5-a92012d12451',
     'Davansh_Investment_inbound':      '0a5b5ccc-4f75-456c-94c8-f9e7293f9d81',
     'Edifice_Properties_inbound':      'bfea3820-a447-4444-bd41-53ff919bbfe3',
-    'Shell Gas Uganda':                '5da7bc3e-e653-4dd6-9402-bbe9b5b3a7b1', // Ramco Gas agent
+    'Shell Gas Uganda':                '5da7bc3e-e653-4dd6-9402-bbe9b5b3a7b1',
     'Ramco_Gas_inbound':               '5da7bc3e-e653-4dd6-9402-bbe9b5b3a7b1',
     'Real_Estate_AI_Sales_Agent':      'efecb97c-2937-4507-a550-8db5e8882c82',
     'Debt_Collection_2':               '4be98966-7c89-4149-8f10-e2ac16291f66',
@@ -120,19 +118,30 @@ export default async function Dashboard({
     'Debt_Collection_Welcome-Bot':     '2dfe90c6-569f-49e0-84f4-e67d9e770255',
   };
 
-  // Client names to exclude from agent grid — noise, test calls, or unknown agent
+  const DISPLAY_NAMES: Record<string, string> = {
+    'Sales_AI': 'Sales AI',
+    'Debt-Collector-Agent-UG': 'Debt Collector',
+    'Cold_Outreach_AI': 'Cold Outreach',
+    'NECTOR_DEMO_TEST': 'NECTOR Demo',
+    'Davansh_Investment_inbound': 'Davansh Investment',
+    'Edifice_Properties_inbound': 'Edifice Properties',
+    'Shell Gas Uganda': 'Ramco Gas',
+    'Ramco_Gas_inbound': 'Ramco Gas',
+    'Real_Estate_AI_Sales_Agent': 'Real Estate AI',
+    'Debt_Collection_2': 'Debt Collection 2',
+    'Follow_Up_Debt_Collection_Bot': 'Follow-up Debt',
+    'Debt_Collection_Welcome-Bot': 'Debt Welcome',
+  };
+
   const EXCLUDED_CLIENTS = new Set(['Unknown', 'Acme Corp', 'Uganda Communications Commission', '']);
 
-  // Build agent_id lookup — DB data first, static map as fallback
   const agentIdMap = new Map<string, string>(Object.entries(KNOWN_AGENT_IDS));
   for (const r of (agentIdRows ?? []) as Array<Record<string, unknown>>) {
     const name = r.client_name as string;
     const aid = r.agent_id as string;
-    if (name && aid) agentIdMap.set(name, aid); // DB data wins over static
+    if (name && aid) agentIdMap.set(name, aid);
   }
 
-  // Ensure ALL known agents appear in the grid using clientRows.
-  // get_agent_error_summary() only returns agents with error data, so healthy agents get missed.
   const summaryNames = new Set(agentSummaries.map((s) => s.client_name));
   for (const [name, count] of (clientRows as Array<Record<string, unknown>> ?? []).map(
     (r) => [r.client_name as string, Number(r.count)] as [string, number]
@@ -150,20 +159,16 @@ export default async function Dashboard({
       });
     }
   }
-  // Remove noise agents from error summary results too
   const filteredSummaries = agentSummaries.filter((s) => !EXCLUDED_CLIENTS.has(s.client_name));
   agentSummaries.length = 0;
   agentSummaries.push(...filteredSummaries);
-  // Sort: most calls first, ties broken by error rate desc
   agentSummaries.sort((a, b) => b.total_calls - a.total_calls || b.error_rate - a.error_rate);
 
-
-  // ── Client breakdown for filter pills ──────────────────────────────────────
   const clients = (clientRows as Array<Record<string, unknown>> ?? []).map(
     (r) => [r.client_name as string, Number(r.count)] as [string, number]
   );
 
-  // ── Trend chart ─────────────────────────────────────────────────────────────
+  // ── Trend per agent (used by chart + per-card sparkline) ────────────────────
   type WeekMap = Map<string, { analyzed: number; errors: number }>;
   const trendByAgent: Record<string, WeekMap> = {};
   for (const row of (weeklyRows as Array<Record<string, unknown>> ?? [])) {
@@ -189,9 +194,16 @@ export default async function Dashboard({
     return point;
   });
 
-  // ── AI pipeline stats ────────────────────────────────────────────────────────
-  const pipelineStats = (pipelineRows as Array<Record<string, unknown>> | null)?.[0] ?? null;
+  function sparkFor(agentName: string): number[] {
+    const wm = trendByAgent[agentName];
+    if (!wm) return [];
+    return allWeeks.slice(-8).map((wk) => {
+      const e = wm.get(wk);
+      return e && e.analyzed > 0 ? Math.round((e.errors / e.analyzed) * 100) : 0;
+    });
+  }
 
+  const pipelineStats = (pipelineRows as Array<Record<string, unknown>> | null)?.[0] ?? null;
   const totalPages = Math.ceil((filteredTotal || 0) / PAGE_SIZE);
 
   function buildUrl(overrides: Record<string, string>) {
@@ -200,286 +212,487 @@ export default async function Dashboard({
     return qs ? `/dashboard?${qs}` : '/dashboard';
   }
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
   const analyzed = totalAnalyzed;
   const analysisPct = totalCalls > 0 ? Math.round((analyzed / totalCalls) * 100) : 0;
+  const totalAgents = agentSummaries.length;
+  const errorRateTone = errorRate > 60 ? 'text-crit' : errorRate > 40 ? 'text-warn' : 'text-ink';
+  const errorRateAccent = errorRate > 60 ? 'var(--color-crit)' : errorRate > 40 ? 'var(--color-warn)' : 'var(--color-accent)';
+  const formatDur = (s: number) => `${Math.floor(s / 60)}m ${s % 60}s`;
+  const display = (raw: string) => DISPLAY_NAMES[raw] ?? raw.replace(/[_-]+/g, ' ');
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="min-h-screen bg-canvas text-ink">
       <Nav activeCalls={activeCalls} />
 
-      <main className="max-w-7xl mx-auto px-6 pb-16">
+      <main className="relative">
         <LiveTracker />
 
-        {/* ── STAT STRIP ─────────────────────────────────────────────────────── */}
-        <div className="py-6 border-b border-border mb-8 grid grid-cols-4 md:grid-cols-7 gap-6">
-          {[
-            { label: 'Total Calls',   value: (totalCalls ?? 0).toLocaleString(), hi: false },
-            { label: 'Success Rate',  value: `${successRate}%`,                  hi: successRate < 70 },
-            { label: 'Error Rate',    value: `${errorRate}%`,                    hi: errorRate > 50, crit: errorRate > 70 },
-            { label: 'Avg Duration',  value: `${Math.floor(avgDuration / 60)}m ${avgDuration % 60}s`, hi: false },
-            { label: 'Total Cost',    value: `$${totalCost.toFixed(2)}`,          hi: false },
-            { label: 'Analyzed',      value: `${analyzed.toLocaleString()} (${analysisPct}%)`, hi: analysisPct < 50 },
-            { label: 'Live Now',      value: String(activeCalls ?? 0),            hi: false, live: (activeCalls ?? 0) > 0 },
-          ].map(({ label, value, hi, crit, live }) => (
-            <div key={label}>
-              <div className="text-[11px] font-medium text-ink-3 uppercase tracking-wider mb-1.5">{label}</div>
-              <div className={`tabular-nums font-bold leading-none ${
-                crit
-                  ? 'text-3xl font-black text-crit'
-                  : hi
-                    ? 'text-2xl text-warn'
-                    : live
-                      ? 'text-2xl text-accent'
-                      : 'text-2xl text-ink'
-              }`}>
-                {live && (activeCalls ?? 0) > 0
-                  ? <span className="inline-flex items-center gap-1.5">{value}<span className="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /></span>
-                  : value}
+        {/* ── HERO ──────────────────────────────────────────────────────────── */}
+        <section className="relative isolate overflow-hidden border-b border-border-subtle">
+          <div className="glow-bg" />
+          <div className="grid-bg" />
+
+          <div className="relative max-w-7xl mx-auto px-6 pt-14 pb-12">
+            <Reveal>
+              <div className="flex items-center gap-3 mb-5">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-accent">
+                  Voice Agent Observatory
+                </span>
+                <span className="h-px flex-1 max-w-[120px] bg-border-strong" />
+                <span className="text-[10px] uppercase tracking-[0.18em] text-ink-3 nums">
+                  {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
               </div>
-            </div>
-          ))}
-        </div>
 
-        {/* ── AI PIPELINE STRIP ──────────────────────────────────────────────── */}
-        <PipelineStrip stats={pipelineStats as Parameters<typeof PipelineStrip>[0]['stats']} />
+              <h1 className="text-[42px] md:text-[56px] font-black tracking-[-0.03em] leading-[0.95] mb-4 max-w-4xl">
+                <span className="text-ink-2">Monitoring</span>{' '}
+                <span className="text-ink">{totalAgents} agents</span>{' '}
+                <span className="text-ink-2">across</span>{' '}
+                <span className="text-accent">{totalCalls.toLocaleString()}</span>{' '}
+                <span className="text-ink-2">calls.</span>
+              </h1>
 
-        {/* ── ALERTS ─────────────────────────────────────────────────────────── */}
-        {activeAlerts.length > 0 && (
-          <div className="mb-8 rounded-xl border border-crit-border bg-crit-bg overflow-hidden">
-            <div className="px-5 py-3 border-b border-crit-border flex items-center gap-2">
-              <span className="text-sm font-semibold text-crit">Active Alerts</span>
-              <span className="text-xs text-crit opacity-70">{activeAlerts.length} rule{activeAlerts.length > 1 ? 's' : ''} triggered</span>
-            </div>
-            <div className="divide-y divide-crit-border divide-opacity-40">
-              {activeAlerts.map((alert, i) => (
-                <div key={i} className="px-5 py-3 flex items-center gap-4">
-                  <span className="text-base shrink-0">
-                    {alert.severity === 'critical' ? '🔴' : '🟡'}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium text-ink">{alert.label}</span>
-                    <span className="ml-2 text-xs text-ink-2">{alert.agent} · {alert.count} call{alert.count > 1 ? 's' : ''}</span>
-                    <div className="text-xs text-ink-3 font-mono mt-0.5">
-                      <Link href={`/calls/${alert.example_call_id}`} className="hover:text-accent transition-colors">
-                        {alert.example_call_id.substring(0, 24)}…
-                      </Link>
+              <p className="text-[15px] text-ink-3 max-w-2xl leading-relaxed">
+                {criticalTotal > 0
+                  ? `${criticalTotal} critical alert${criticalTotal > 1 ? 's' : ''} firing now. Click an agent to apply verified prompt patches.`
+                  : activeAlerts.length > 0
+                    ? `${activeAlerts.length} alerts active. Burst rules tracking error spikes across agents.`
+                    : 'No alerts firing. Pipeline analyzing calls within seconds of completion.'}
+              </p>
+            </Reveal>
+
+            {/* Primary KPI deck */}
+            <Reveal delay={0.15} selector="[data-kpi]" stagger={0.08} className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-3">
+              <KpiPrimary
+                label="Error rate"
+                value={errorRate}
+                suffix="%"
+                tone={errorRateTone}
+                accent={errorRateAccent}
+                support={`${callsWithErrors.toLocaleString()} of ${analyzed.toLocaleString()} analyzed`}
+                emphasis
+              />
+              <KpiPrimary
+                label="Live now"
+                value={activeCalls}
+                tone="text-accent"
+                accent="var(--color-accent)"
+                support={activeCalls > 0 ? 'Calls in flight · webhook armed' : 'Idle · webhook ready'}
+                live={activeCalls > 0}
+              />
+              <KpiPrimary
+                label="Critical alerts"
+                value={criticalTotal}
+                tone={criticalTotal > 0 ? 'text-crit' : 'text-ink'}
+                accent={criticalTotal > 0 ? 'var(--color-crit)' : 'var(--color-ok)'}
+                support={criticalTotal > 0 ? 'Action required' : 'All clear'}
+              />
+            </Reveal>
+
+            {/* Secondary metric row */}
+            <Reveal delay={0.35} selector="[data-mini]" stagger={0.04} className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-px rounded-xl overflow-hidden border border-border-subtle bg-border-subtle">
+              {[
+                { label: 'Total calls',  value: totalCalls.toLocaleString() },
+                { label: 'Success rate', value: `${successRate}%` },
+                { label: 'Avg duration', value: formatDur(avgDuration) },
+                { label: 'Analyzed',     value: `${analysisPct}%` },
+                { label: 'Cost',         value: `$${totalCost.toFixed(2)}` },
+              ].map(({ label, value }) => (
+                <div key={label} data-mini className="bg-surface px-4 py-3.5">
+                  <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-3">{label}</div>
+                  <div className="mt-1 text-[17px] font-semibold nums text-ink">{value}</div>
+                </div>
+              ))}
+            </Reveal>
+          </div>
+        </section>
+
+        <div className="max-w-7xl mx-auto px-6 pb-16 pt-10">
+
+          {/* ── PIPELINE STRIP ─────────────────────────────────────────────── */}
+          <PipelineStrip stats={pipelineStats as Parameters<typeof PipelineStrip>[0]['stats']} />
+
+          {/* ── ALERTS ─────────────────────────────────────────────────────── */}
+          {activeAlerts.length > 0 && (
+            <Reveal className="mb-10">
+              <div className="relative overflow-hidden rounded-2xl border border-crit-border bg-surface card-inset">
+                <div
+                  aria-hidden
+                  className="absolute inset-x-0 top-0 h-px"
+                  style={{ background: 'linear-gradient(90deg, transparent, var(--color-crit), transparent)' }}
+                />
+                <div className="px-5 py-3.5 flex items-center gap-3 border-b border-crit-border/40">
+                  <span className="dot-live" style={{ background: 'var(--color-crit)' }} />
+                  <span className="text-[13px] font-semibold text-ink">Live alerts</span>
+                  <span className="text-[11px] text-ink-3 nums">{activeAlerts.length} rule{activeAlerts.length > 1 ? 's' : ''} firing</span>
+                </div>
+                <div className="divide-y divide-border-subtle">
+                  {activeAlerts.map((alert, i) => (
+                    <div key={i} className="px-5 py-3 flex items-center gap-4">
+                      <span className={alert.severity === 'critical' ? 'dot-crit h-2 w-2 rounded-full shrink-0' : 'dot-warn h-2 w-2 rounded-full shrink-0'} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-medium text-ink truncate">{alert.label}</div>
+                        <div className="text-[11px] text-ink-3 nums mt-0.5">
+                          {display(alert.agent)} · {alert.count} call{alert.count > 1 ? 's' : ''} ·{' '}
+                          <Link href={`/calls/${alert.example_call_id}`} className="hover:text-accent transition-colors font-mono">
+                            {alert.example_call_id.substring(0, 10)}…
+                          </Link>
+                        </div>
+                      </div>
+                      <AckAlertButton ruleId={alert.rule_id} agent={alert.agent} />
+                      <span className="text-[11px] text-ink-3 nums shrink-0">{new Date(alert.fired_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Reveal>
+          )}
+
+          {/* ── AGENT GRID ──────────────────────────────────────────────────── */}
+          <section className="mb-12">
+            <header className="flex items-end justify-between gap-6 mb-6">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-accent mb-2">Agents</div>
+                <h2 className="text-[24px] font-bold tracking-tight">
+                  Ranked by call volume
+                  <span className="ml-3 text-[13px] font-normal text-ink-3">Click for errors, patches, fixes</span>
+                </h2>
+              </div>
+              <div className="hidden md:flex items-center gap-4 text-[11px] text-ink-3 uppercase tracking-wider">
+                <LegendDot tone="accent" label="Healthy" />
+                <LegendDot tone="warn" label="Watch" />
+                <LegendDot tone="crit" label="Critical" />
+              </div>
+            </header>
+
+            {agentSummaries.length === 0 ? (
+              <div className="panel px-6 py-14 text-center">
+                <div className="text-2xl mb-2 text-ink-3">—</div>
+                <div className="text-sm font-medium text-ink-2">No agents found</div>
+                <div className="text-xs text-ink-3 mt-1">Run sync to populate call data.</div>
+              </div>
+            ) : (
+              <Reveal selector="[data-agent]" stagger={0.05} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {agentSummaries.map((agent, idx) => {
+                  const aid = agentIdMap.get(agent.client_name);
+                  const href = aid ? `/dashboard/${aid}` : '#';
+                  const isFeatured = idx === 0;
+                  const tone = agent.critical_count > 0
+                    ? 'crit'
+                    : agent.error_rate > 50
+                      ? 'warn'
+                      : agent.error_rate > 0
+                        ? 'accent'
+                        : 'ok';
+                  const sparkData = sparkFor(agent.client_name);
+                  return (
+                    <Link
+                      key={agent.client_name}
+                      href={href}
+                      data-agent
+                      className={`group relative overflow-hidden rounded-2xl border border-border bg-surface card-inset transition-all duration-300 hover:border-border-strong hover:-translate-y-0.5 ${isFeatured ? 'md:col-span-2 xl:col-span-2' : ''}`}
+                    >
+                      <span
+                        aria-hidden
+                        className="absolute inset-x-0 top-0 h-px opacity-60 group-hover:opacity-100 transition-opacity"
+                        style={{
+                          background: `linear-gradient(90deg, transparent, var(--color-${tone === 'ok' ? 'ok' : tone}), transparent)`,
+                        }}
+                      />
+                      <div className="p-5">
+                        <div className="flex items-start justify-between gap-3 mb-4">
+                          <div className="min-w-0">
+                            <h3 className="text-[15px] font-semibold text-ink leading-tight truncate">
+                              {display(agent.client_name)}
+                            </h3>
+                            <div className="text-[11px] text-ink-3 mt-0.5 font-mono truncate">
+                              {agent.top_error_type
+                                ? <>top · <span className="text-ink-2">{agent.top_error_type.replace(/_/g, ' ')}</span></>
+                                : 'no active errors'}
+                            </div>
+                          </div>
+                          <Pill tone={tone} count={agent.critical_count} errorRate={agent.error_rate} />
+                        </div>
+
+                        <div className={`grid ${isFeatured ? 'grid-cols-4' : 'grid-cols-3'} gap-4 items-end`}>
+                          <Metric label="Calls" value={agent.total_calls.toString()} large />
+                          <Metric
+                            label="Error rate"
+                            value={`${agent.error_rate}%`}
+                            tone={agent.error_rate > 50 ? 'crit' : agent.error_rate > 30 ? 'warn' : 'default'}
+                            large
+                          />
+                          <Metric
+                            label="Errors"
+                            value={agent.calls_with_errors.toString()}
+                            tone={agent.calls_with_errors > 0 ? 'warn' : 'ok'}
+                            large
+                          />
+                          {isFeatured && (
+                            <div className="hidden md:block">
+                              <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-3 mb-1">Last 8wk</div>
+                              <Sparkline data={sparkData} width={140} height={36} />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-4 flex items-center justify-between text-[11px] text-ink-3 nums">
+                          <span>{agent.analyzed_calls} / {agent.total_calls} analyzed</span>
+                          <span className="text-accent opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all">
+                            View errors →
+                          </span>
+                        </div>
+                      </div>
+
+                      {!isFeatured && sparkData.length > 1 && (
+                        <div className="absolute right-3 top-3 opacity-30 group-hover:opacity-80 transition-opacity">
+                          <Sparkline data={sparkData} width={64} height={20} glow={false} />
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </Reveal>
+            )}
+          </section>
+
+          {/* ── TREND CHART ─────────────────────────────────────────────────── */}
+          {trendData.length > 0 && (
+            <section className="mb-12">
+              <header className="flex items-end justify-between mb-4">
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-accent mb-1.5">Error rate trend</div>
+                  <h2 className="text-[20px] font-bold tracking-tight">Weekly per agent</h2>
+                </div>
+                <span className="text-[11px] text-ink-3 nums uppercase tracking-wider">Last 12 weeks</span>
+              </header>
+              <div className="panel card-inset p-5">
+                <TrendChart data={trendData} agents={trendAgents} />
+              </div>
+            </section>
+          )}
+
+          {/* ── CALL LOG ───────────────────────────────────────────────────── */}
+          <section>
+            <header className="flex items-end justify-between gap-4 mb-4">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-accent mb-1.5">Call log</div>
+                <h2 className="text-[20px] font-bold tracking-tight">
+                  {clientFilter ? display(clientFilter) : 'All'} calls
+                  <span className="ml-3 text-[12px] font-normal nums text-ink-3">{filteredTotal?.toLocaleString()}</span>
+                </h2>
+              </div>
+              <div className="flex flex-wrap gap-1 justify-end max-w-2xl">
+                <FilterChip active={!clientFilter} href={buildUrl({ client: '', page: '1' })}>
+                  All · {totalCalls}
+                </FilterChip>
+                {clients.slice(0, 6).map(([name, count]) => (
+                  <FilterChip key={name} active={clientFilter === name} href={buildUrl({ client: name, page: '1' })}>
+                    {display(name)} · {count}
+                  </FilterChip>
+                ))}
+              </div>
+            </header>
+
+            <div className="panel card-inset overflow-hidden">
+              <div className="grid grid-cols-[1fr_88px_84px_84px_72px] px-5 py-2.5 border-b border-border-subtle bg-surface-2/50">
+                {['Agent / ID', 'Status', 'Duration', 'Errors', 'Date'].map((h) => (
+                  <span key={h} className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{h}</span>
+                ))}
+              </div>
+
+              <div className="divide-y divide-border-subtle">
+                {calls?.length === 0 && (
+                  <div className="px-5 py-12 text-center">
+                    <div className="text-sm text-ink-2 font-medium mb-1">No calls yet</div>
+                    <div className="text-xs text-ink-3">
+                      Run <code className="font-mono bg-surface-2 px-1.5 py-0.5 rounded">npm run sync</code> to fetch from Ultravox.
                     </div>
                   </div>
-                  <AckAlertButton ruleId={alert.rule_id} agent={alert.agent} />
-                  <span className="text-xs text-ink-3 shrink-0">{new Date(alert.fired_at).toLocaleTimeString()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+                )}
+                {calls?.map((call) => {
+                  const isUnjoined = call.ended_reason === 'unjoined';
+                  const isError = call.ended_reason?.includes('error');
+                  const dur = call.duration_seconds || 0;
+                  const hasErrors = (call.error_count ?? 0) > 0;
+                  const hasCritical = (call.critical_error_count ?? 0) > 0;
+                  const noTranscript = isUnjoined || dur < 5;
 
-        {/* ── AGENT GRID ──────────────────────────────────────────────────── */}
-        <section className="mb-10">
-          <div className="flex items-end justify-between gap-4 mb-5">
-            <div>
-              <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Agent Intelligence</div>
-              <h2 className="text-2xl font-black text-ink leading-none">
-                {agentSummaries.length} <span className="font-normal text-ink-3 text-lg">agent{agentSummaries.length !== 1 ? 's' : ''}</span>
-                <span className="text-ink-3 font-normal text-sm ml-3">Click an agent for errors, patches & fixes</span>
-              </h2>
-            </div>
-          </div>
+                  const statusTone = isUnjoined
+                    ? 'ink-3'
+                    : isError
+                      ? 'crit'
+                      : call.status === 'active'
+                        ? 'accent'
+                        : 'ok';
 
-          {agentSummaries.length === 0 ? (
-            <div className="bg-surface border border-border rounded-xl px-6 py-12 text-center">
-              <div className="text-2xl mb-2">—</div>
-              <div className="text-sm font-medium text-ink-2">No agents found</div>
-              <div className="text-xs text-ink-3 mt-1">Run sync to populate call data.</div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {agentSummaries.map((agent) => {
-                const aid = agentIdMap.get(agent.client_name);
-                const href = aid ? `/dashboard/${aid}` : '#';
-                return (
-                  <Link
-                    key={agent.client_name}
-                    href={href}
-                    className="bg-surface border border-border rounded-xl p-5 hover:border-accent hover:shadow-sm transition-all group"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="text-sm font-bold text-ink group-hover:text-accent transition-colors">{agent.client_name}</h3>
-                        {agent.top_error_type && (
-                          <div className="text-[11px] font-mono text-ink-3 mt-0.5">
-                            Top: {agent.top_error_type.replace(/_/g, ' ')}
-                          </div>
+                  return (
+                    <Link
+                      key={call.call_id}
+                      href={`/calls/${call.call_id}`}
+                      className="grid grid-cols-[1fr_88px_84px_84px_72px] px-5 py-3 items-center gap-4 transition-colors hover:bg-surface-2/60"
+                    >
+                      <div className="min-w-0 flex items-center gap-3">
+                        <span
+                          className="h-1.5 w-1.5 rounded-full shrink-0"
+                          style={{ background: `var(--color-${statusTone === 'ink-3' ? 'ink-3' : statusTone})` }}
+                        />
+                        <div className="min-w-0">
+                          <div className="text-[13px] font-medium text-ink truncate">{display(call.client_name)}</div>
+                          <div className="text-[10px] font-mono text-ink-3 truncate">{call.call_id}</div>
+                        </div>
+                      </div>
+
+                      <div className="text-[11px] font-medium uppercase tracking-wider">
+                        <span style={{ color: `var(--color-${statusTone === 'ink-3' ? 'ink-3' : statusTone})` }}>
+                          {call.status}
+                        </span>
+                      </div>
+
+                      <div className="text-[12px] text-ink-2 nums font-mono">
+                        {Math.floor(dur / 60)}:{String(dur % 60).padStart(2, '0')}
+                      </div>
+
+                      <div className="text-[12px] nums">
+                        {hasCritical ? (
+                          <span className="font-semibold text-crit">{call.critical_error_count}c / {call.error_count}</span>
+                        ) : hasErrors ? (
+                          <span className="font-medium text-warn">{call.error_count}</span>
+                        ) : noTranscript && call.analysis_status === 'pending' ? (
+                          <span className="text-ink-3">—</span>
+                        ) : call.analysis_status === 'complete' ? (
+                          <span className="text-ok">✓</span>
+                        ) : (
+                          <span className="text-ink-3 text-[11px]">{call.analysis_status ?? '—'}</span>
                         )}
                       </div>
-                      {agent.critical_count > 0 && (
-                        <span className="px-1.5 py-0.5 text-[11px] font-medium bg-crit-bg text-crit border border-crit-border rounded-md">
-                          {agent.critical_count} critical
-                        </span>
-                      )}
-                    </div>
 
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <div className="text-[10px] text-ink-3 uppercase tracking-wider">Calls</div>
-                        <div className="text-lg font-bold text-ink tabular-nums">{agent.total_calls}</div>
+                      <div className="text-[11px] text-ink-3 nums">
+                        {new Date(call.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                       </div>
-                      <div>
-                        <div className="text-[10px] text-ink-3 uppercase tracking-wider">Error Rate</div>
-                        <div className={`text-lg font-bold tabular-nums ${agent.error_rate > 50 ? 'text-crit' : agent.error_rate > 30 ? 'text-warn' : 'text-ink'}`}>
-                          {agent.error_rate}%
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] text-ink-3 uppercase tracking-wider">Errors</div>
-                        <div className={`text-lg font-bold tabular-nums ${agent.calls_with_errors > 0 ? 'text-warn' : 'text-ok'}`}>
-                          {agent.calls_with_errors}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 text-xs text-ink-3">
-                      {agent.analyzed_calls} / {agent.total_calls} analyzed
-                      <span className="ml-2 text-accent opacity-0 group-hover:opacity-100 transition-opacity">View errors →</span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* ── TREND CHART ─────────────────────────────────────────────────────── */}
-        {trendData.length > 0 && (
-          <section className="mb-10">
-            <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Error Rate Trend</div>
-            <div className="bg-surface border border-border rounded-xl p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-ink">Weekly error rate per agent</h2>
-                <span className="text-xs text-ink-3">Last 12 weeks</span>
+                    </Link>
+                  );
+                })}
               </div>
-              <TrendChart data={trendData} agents={trendAgents} />
-            </div>
-          </section>
-        )}
 
-        {/* ── ALL CALLS ────────────────────────────────────────────────────────── */}
-        <section>
-          <div className="flex items-end justify-between gap-4 mb-4">
-            <div>
-              <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Call Log</div>
-              <h2 className="text-xl font-bold text-ink leading-none">
-                {clientFilter || 'All'} Calls
-                <span className="text-ink-3 font-normal text-base ml-2">{filteredTotal?.toLocaleString()}</span>
-              </h2>
-            </div>
-            {/* Client filters */}
-            <div className="flex flex-wrap gap-1 justify-end">
-              <Link href={buildUrl({ client: '', page: '1' })} className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${!clientFilter ? 'bg-ink text-surface border-ink' : 'border-border text-ink-2 hover:border-ink-3'}`}>
-                All ({totalCalls})
-              </Link>
-              {clients.slice(0, 6).map(([name, count]) => (
-                <Link key={name} href={buildUrl({ client: name, page: '1' })} className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${clientFilter === name ? 'bg-ink text-surface border-ink' : 'border-border text-ink-2 hover:border-ink-3'}`}>
-                  {name} ({count})
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-surface border border-border rounded-xl overflow-hidden">
-            {/* Table header */}
-            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] px-5 py-2.5 border-b border-border-subtle">
-              {['Agent / ID', 'Status', 'Duration', 'Errors', 'Date'].map(h => (
-                <span key={h} className="text-[11px] font-semibold text-ink-3 uppercase tracking-wider">{h}</span>
-              ))}
-            </div>
-
-            <div className="divide-y divide-border-subtle">
-              {calls?.length === 0 && (
-                <div className="px-5 py-12 text-center">
-                  <div className="text-sm text-ink-2 font-medium mb-1">No calls yet</div>
-                  <div className="text-xs text-ink-3">Run <code className="font-mono bg-surface-2 px-1 rounded">npm run sync</code> to fetch from Ultravox.</div>
+              {totalPages > 1 && (
+                <div className="px-5 py-3 border-t border-border-subtle flex items-center justify-between">
+                  <span className="text-[11px] text-ink-3 nums">Page {page} of {totalPages}</span>
+                  <div className="flex gap-2">
+                    {page > 1 && (
+                      <Link href={buildUrl({ page: String(page - 1) })} className="px-3 py-1.5 text-[12px] border border-border rounded-md text-ink-2 hover:border-border-strong hover:text-ink transition-colors">
+                        ← Prev
+                      </Link>
+                    )}
+                    {page < totalPages && (
+                      <Link href={buildUrl({ page: String(page + 1) })} className="px-3 py-1.5 text-[12px] border border-border rounded-md text-ink-2 hover:border-border-strong hover:text-ink transition-colors">
+                        Next →
+                      </Link>
+                    )}
+                  </div>
                 </div>
               )}
-              {calls?.map((call) => {
-                const isUnjoined = call.ended_reason === 'unjoined';
-                const isError = call.ended_reason?.includes('error');
-                const dur = call.duration_seconds || 0;
-                const hasErrors = (call.error_count ?? 0) > 0;
-                const hasCritical = (call.critical_error_count ?? 0) > 0;
-                const noTranscript = isUnjoined || dur < 5;
-
-                return (
-                  <Link
-                    key={call.call_id}
-                    href={`/calls/${call.call_id}`}
-                    className="grid grid-cols-[1fr_auto_auto_auto_auto] px-5 py-3 hover:bg-surface-2 transition-colors items-center gap-4"
-                  >
-                    {/* Agent + ID */}
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-ink truncate">{call.client_name}</div>
-                      <div className="text-[11px] font-mono text-ink-3 truncate">{call.call_id}</div>
-                    </div>
-
-                    {/* Status */}
-                    <div>
-                      <span className={`inline-block px-2 py-0.5 text-[11px] font-medium rounded-md border ${
-                        isUnjoined ? 'bg-surface-2 text-ink-3 border-border'
-                          : isError ? 'bg-crit-bg text-crit border-crit-border'
-                          : call.status === 'active' ? 'bg-accent-bg text-accent border-accent-border'
-                          : 'bg-ok-bg text-ok border-ok-border'
-                      }`}>
-                        {call.status}
-                      </span>
-                    </div>
-
-                    {/* Duration */}
-                    <div className="text-xs text-ink-2 tabular-nums whitespace-nowrap">
-                      {Math.floor(dur / 60)}:{String(dur % 60).padStart(2, '0')}
-                    </div>
-
-                    {/* Errors */}
-                    <div className="text-right">
-                      {hasCritical ? (
-                        <span className="text-xs font-semibold text-crit tabular-nums">{call.critical_error_count}c / {call.error_count}</span>
-                      ) : hasErrors ? (
-                        <span className="text-xs font-medium text-warn tabular-nums">{call.error_count}</span>
-                      ) : noTranscript && call.analysis_status === 'pending' ? (
-                        <span className="text-[11px] text-ink-3">—</span>
-                      ) : call.analysis_status === 'complete' ? (
-                        <span className="text-xs text-ok">✓</span>
-                      ) : (
-                        <span className="text-[11px] text-ink-3">{call.analysis_status ?? '—'}</span>
-                      )}
-                    </div>
-
-                    {/* Date */}
-                    <div className="text-xs text-ink-3 whitespace-nowrap">
-                      {new Date(call.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
-                    </div>
-                  </Link>
-                );
-              })}
             </div>
+          </section>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="px-5 py-3 border-t border-border-subtle flex items-center justify-between">
-                <span className="text-xs text-ink-3">Page {page} of {totalPages}</span>
-                <div className="flex gap-2">
-                  {page > 1 && (
-                    <Link href={buildUrl({ page: String(page - 1) })} className="px-3 py-1.5 text-xs border border-border rounded-md text-ink-2 hover:border-ink-3 transition-colors">← Prev</Link>
-                  )}
-                  {page < totalPages && (
-                    <Link href={buildUrl({ page: String(page + 1) })} className="px-3 py-1.5 text-xs border border-border rounded-md text-ink-2 hover:border-ink-3 transition-colors">Next →</Link>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-
+        </div>
       </main>
     </div>
+  );
+}
+
+// ── Local presentational primitives ──────────────────────────────────────────
+
+function KpiPrimary({
+  label, value, suffix, tone, accent, support, emphasis, live,
+}: {
+  label: string;
+  value: number;
+  suffix?: string;
+  tone: string;
+  accent: string;
+  support: string;
+  emphasis?: boolean;
+  live?: boolean;
+}) {
+  return (
+    <div
+      data-kpi
+      className="relative overflow-hidden rounded-2xl border border-border bg-surface card-inset p-5"
+    >
+      <span
+        aria-hidden
+        className="absolute -top-12 -right-12 h-32 w-32 rounded-full opacity-50 blur-3xl"
+        style={{ background: accent }}
+      />
+      <div className="relative flex items-start justify-between gap-3 mb-4">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-3">{label}</span>
+        {live && <span className="dot-live" />}
+      </div>
+      <div className={`relative font-black tracking-[-0.04em] nums leading-none ${emphasis ? 'text-[72px]' : 'text-[56px]'} ${tone}`}>
+        <CountUp value={value} suffix={suffix} />
+      </div>
+      <div className="relative mt-3 text-[12px] text-ink-3">{support}</div>
+    </div>
+  );
+}
+
+function LegendDot({ tone, label }: { tone: 'accent' | 'warn' | 'crit'; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: `var(--color-${tone})` }} />
+      {label}
+    </span>
+  );
+}
+
+function Pill({ tone, count, errorRate }: { tone: 'crit' | 'warn' | 'accent' | 'ok'; count: number; errorRate: number }) {
+  if (count > 0) {
+    return (
+      <span className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-crit-border bg-crit-bg/60 px-2 py-0.5 text-[11px] font-semibold text-crit nums">
+        <span className="dot-live" style={{ background: 'var(--color-crit)' }} />
+        {count} critical
+      </span>
+    );
+  }
+  if (tone === 'ok') {
+    return (
+      <span className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-border-subtle bg-surface-2/60 px-2 py-0.5 text-[11px] font-medium text-ink-3">
+        <span className="h-1.5 w-1.5 rounded-full bg-ok" />
+        healthy
+      </span>
+    );
+  }
+  return (
+    <span className="shrink-0 text-[11px] font-medium text-ink-3 nums">
+      {errorRate}% err
+    </span>
+  );
+}
+
+function Metric({ label, value, tone = 'default', large }: { label: string; value: string; tone?: 'default' | 'crit' | 'warn' | 'ok'; large?: boolean }) {
+  const colorClass = tone === 'crit' ? 'text-crit' : tone === 'warn' ? 'text-warn' : tone === 'ok' ? 'text-ok' : 'text-ink';
+  return (
+    <div>
+      <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-3 mb-1">{label}</div>
+      <div className={`${large ? 'text-[22px]' : 'text-[16px]'} font-bold nums leading-none ${colorClass}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function FilterChip({ active, href, children }: { active: boolean; href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className={`px-2.5 py-1 text-[11px] font-medium rounded-md border transition-colors ${
+        active
+          ? 'bg-accent text-canvas border-accent'
+          : 'border-border-subtle text-ink-2 hover:border-border-strong hover:text-ink'
+      }`}
+    >
+      {children}
+    </Link>
   );
 }

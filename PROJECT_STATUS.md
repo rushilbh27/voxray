@@ -1,6 +1,6 @@
 # Voxray — Project Status Report
 
-> Last updated: 2026-05-22 (session 3 — features + full structural audit)  
+> Last updated: 2026-05-23 (session 4 — UI/UX pass: dark mode + animations + display names)  
 > Update this file every session. Not a handoff bridge — a permanent record of what was built, where we stand, and where we're going.
 
 ---
@@ -167,6 +167,27 @@ Feedback loop: every fix has before/after proof
 - NECTOR Demo: 4 patches written — `wrong_info`, `accepted_garbled_audio`, `no_save_answers`, `stacked_questions`
 - Real_Estate_AI: 3 patches written — `broke_promise`, `wrong_info`, `no_save_answers`
 - Ramco Gas / Follow-Up Debt / Debt Welcome: verified healthy (no active errors), no patches needed
+
+### Phase 11 — UI/UX Pass: Dark Mode + Polish (session 4)
+Key changes: `Nav.tsx`, `PipelineStrip.tsx`, `TrendChart.tsx`, `dashboard/page.tsx`, `globals.css`
+
+**Dark-mode design system (globals.css):**
+- Dual-theme OKLCH token set — warm amber accent (hue ~55°), dark canvas (`oklch(14% 0.012 55)`)
+- Semantic color layers: `canvas → surface → surface-2 → surface-3`, borders: subtle/default/strong
+- Semantic status tokens: `crit`, `warn`, `ok` with matching `-bg` + `-border` variants
+- No #000/#fff anywhere — full OKLCH warm palette
+
+**New components:**
+- `CountUp.tsx` — animated number counter (Intersection Observer, requestAnimationFrame)
+- `Reveal.tsx` — scroll-triggered fade-in (IntersectionObserver)
+- `Sparkline.tsx` — inline SVG sparkline for dashboard stat cards
+- `ThemeToggle.tsx` — dark/light toggle (persisted to localStorage)
+
+**Dashboard polish:**
+- `DISPLAY_NAMES` map — human-readable agent names (no more snake_case raw DB strings)
+- `criticalTotal` — critical alert count computed from activeAlerts
+- Nav, PipelineStrip, TrendChart restyled for dark theme
+- Comment noise removed throughout
 
 ### Phase 10 — Repeat Error Tracker + 7 New Features (session 3)
 Key commits: `ee62fa1`, `8ce3501`, `66e6527`, `8a75e62`, `8c5b05e`
@@ -371,13 +392,14 @@ Each error type has patches (find→replace strings). On the agent profile page,
 
 ## What's Left — Prioritized
 
-### Next up: UI/UX pass (session 4)
-Homepage excluded — focus on dashboard, agent profile, call detail.
+### Next up: UI/UX pass continued (session 5)
+Dashboard grid + globals.css done. Remaining:
 
-- [ ] **Dashboard grid** — visual polish, better error rate display, clearer call volume
-- [ ] **Agent profile** — information hierarchy, heatmap readability, section spacing
-- [ ] **Call detail** — transcript readability, error highlights inline in transcript
-- [ ] **General** — color system consistency, loading states, empty states, mobile
+- [ ] **Agent profile** `/dashboard/[agentId]` — dark theme, section spacing, heatmap readability
+- [ ] **Call detail** `/calls/[id]` — transcript readability, inline error highlights in transcript
+- [ ] **Loading states** — skeletons dark-themed
+- [ ] **Empty states** — no-data views for heatmap/outcome chart
+- [ ] **Mobile** — responsive pass on all pages
 
 ### Medium priority
 - [ ] **Shell Gas Uganda agent profile** — `client_name` is "Shell Gas Uganda" in DB but agent name at Ultravox is "Ramco_Gas_inbound". Heatmap/outcome data works. Fix-specs may not match since patches reference "Ramco Gas" client_name.

@@ -208,25 +208,34 @@ All major agents now have verified fix-spec patches. See agent table above.
 - Real Estate AI: 3 patches (broke_promise, wrong_info, no_save_answers)
 - Ramco Gas / Follow-Up Debt / Debt Welcome: healthy, no active errors, no patches needed
 
-## NEXT SESSION: UI/UX Pass (session 4)
+## ✅ COMPLETED: UI/UX Pass — Dashboard + Design System (session 4)
 
-**Goal:** Homepage excluded. Polish every user-facing page so the operator workflow is fast, clear, and friction-free.
+**What was built:**
+- Full dark-mode OKLCH design token system in `globals.css` — warm amber accent, semantic surfaces, status colors
+- `CountUp.tsx` — animated stat numbers
+- `Reveal.tsx` — scroll-triggered fade-ins
+- `Sparkline.tsx` — inline SVG sparklines for stat cards
+- `ThemeToggle.tsx` — dark/light toggle (localStorage)
+- `DISPLAY_NAMES` map in dashboard — no more snake_case agent names in UI
+- Nav, PipelineStrip, TrendChart restyled for dark theme
+- `criticalTotal` computed correctly from live alerts
+
+---
+
+## NEXT SESSION: UI/UX Pass Continued (session 5)
+
+**Goal:** Apply dark theme + polish to remaining pages.
 
 **Pages in scope:**
-1. `/dashboard` — agent grid cards, stat strip, nav
-2. `/dashboard/[agentId]` — error leaderboard, heatmap, outcome chart, before/after, patches, worst calls
-3. `/calls/[id]` — call detail, transcript, error highlights
+1. `/dashboard/[agentId]` — agent profile (heatmap, outcome chart, before/after, patches, worst calls)
+2. `/calls/[id]` — call detail, transcript, inline error highlights
 
-**Known UX issues to address:**
-- Agent card names use raw DB strings (e.g. "Shell Gas Uganda", "Edifice_Properties_inbound") — need display names
+**Known issues still open:**
+- Agent profile page not yet dark-themed — surfaces, borders, section spacing
 - Heatmap label column may truncate on small screens
-- Worst calls panel: customer name badge styling
-- Long page — consider collapsible sections or tabbed layout for agent profile
-- Error type labels use snake_case in some places
-
-**Bugs to watch for:**
-- Shell Gas Uganda profile page — `client_name` mismatch may affect some queries
-- NECTOR Demo + Real Estate patch verification — confirm `verifyPatch()` shows line numbers live
+- Worst calls panel: customer name badge styling needs dark-theme update
+- Error type labels still use snake_case in some places on profile page
+- Call detail: transcript is wall-of-text, errors not highlighted inline
 
 **After UI/UX:**
 - Expand auto-apply allowlist when FP rate confident

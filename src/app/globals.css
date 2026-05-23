@@ -1,54 +1,103 @@
 @import "tailwindcss";
 
-/* ── Design tokens ─────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────
+   Voxray design tokens — dual theme (dark default + light variant)
+   All colors in OKLCH, neutrals tinted toward amber (warm hue ~55°).
+   No #000, no #fff. Amber accent replaces former violet.
+   ───────────────────────────────────────────────────────────────────────── */
 @theme {
-  /* Surfaces */
-  --color-canvas:        oklch(97% 0.005 65);
-  --color-surface:       oklch(99.5% 0.002 65);
-  --color-surface-2:     oklch(95% 0.007 68);
+  /* Surfaces — dark default */
+  --color-canvas:        oklch(14% 0.012 55);
+  --color-surface:       oklch(17.5% 0.014 55);
+  --color-surface-2:     oklch(21% 0.015 55);
+  --color-surface-3:     oklch(25% 0.014 55);
 
   /* Borders */
-  --color-border:        oklch(89% 0.006 65);
-  --color-border-subtle: oklch(93.5% 0.004 65);
+  --color-border:        oklch(28% 0.013 55);
+  --color-border-subtle: oklch(23% 0.012 55);
+  --color-border-strong: oklch(36% 0.015 55);
 
   /* Ink (text) */
-  --color-ink:           oklch(17% 0.013 65);
-  --color-ink-2:         oklch(42% 0.010 65);
-  --color-ink-3:         oklch(63% 0.007 65);
+  --color-ink:           oklch(96% 0.010 60);
+  --color-ink-2:         oklch(74% 0.012 55);
+  --color-ink-3:         oklch(54% 0.011 55);
 
-  /* Accent — deep violet, not standard blue */
-  --color-accent:        oklch(44% 0.165 265);
-  --color-accent-hover:  oklch(40% 0.180 265);
-  --color-accent-bg:     oklch(95.5% 0.042 265);
-  --color-accent-border: oklch(84% 0.060 265);
+  /* Accent — amber / warm orange */
+  --color-accent:        oklch(74% 0.175 55);
+  --color-accent-hover:  oklch(80% 0.185 55);
+  --color-accent-bg:     oklch(30% 0.080 55);
+  --color-accent-border: oklch(42% 0.110 55);
+  --color-accent-glow:   oklch(68% 0.230 40);
 
   /* Critical */
-  --color-crit:          oklch(51% 0.215 22);
-  --color-crit-bg:       oklch(96.5% 0.038 22);
-  --color-crit-border:   oklch(84% 0.065 22);
+  --color-crit:          oklch(70% 0.215 25);
+  --color-crit-bg:       oklch(28% 0.105 25);
+  --color-crit-border:   oklch(42% 0.150 25);
 
   /* Warning */
-  --color-warn:          oklch(58% 0.160 55);
-  --color-warn-bg:       oklch(96.5% 0.030 55);
-  --color-warn-border:   oklch(85% 0.055 55);
+  --color-warn:          oklch(80% 0.155 75);
+  --color-warn-bg:       oklch(30% 0.080 75);
+  --color-warn-border:   oklch(44% 0.115 75);
 
   /* OK / success */
-  --color-ok:            oklch(50% 0.130 152);
-  --color-ok-bg:         oklch(96.5% 0.028 152);
-  --color-ok-border:     oklch(84% 0.052 152);
+  --color-ok:            oklch(72% 0.130 152);
+  --color-ok-bg:         oklch(26% 0.060 152);
+  --color-ok-border:     oklch(40% 0.095 152);
 
   /* Fonts */
   --font-sans:           var(--font-geist-sans);
   --font-mono:           var(--font-geist-mono);
 }
 
-/* ── Base ────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────
+   Light theme overrides — explicit data-theme="light"
+   ───────────────────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --color-canvas:        oklch(97% 0.006 65);
+  --color-surface:       oklch(99.4% 0.003 65);
+  --color-surface-2:     oklch(95% 0.008 68);
+  --color-surface-3:     oklch(92% 0.010 68);
+
+  --color-border:        oklch(88% 0.007 65);
+  --color-border-subtle: oklch(93% 0.005 65);
+  --color-border-strong: oklch(78% 0.010 65);
+
+  --color-ink:           oklch(17% 0.013 65);
+  --color-ink-2:         oklch(42% 0.010 65);
+  --color-ink-3:         oklch(63% 0.007 65);
+
+  --color-accent:        oklch(56% 0.175 50);
+  --color-accent-hover:  oklch(50% 0.190 50);
+  --color-accent-bg:     oklch(95.5% 0.045 55);
+  --color-accent-border: oklch(82% 0.080 55);
+  --color-accent-glow:   oklch(64% 0.200 40);
+
+  --color-crit:          oklch(51% 0.215 22);
+  --color-crit-bg:       oklch(96.5% 0.038 22);
+  --color-crit-border:   oklch(84% 0.065 22);
+
+  --color-warn:          oklch(58% 0.160 55);
+  --color-warn-bg:       oklch(96.5% 0.030 55);
+  --color-warn-border:   oklch(85% 0.055 55);
+
+  --color-ok:            oklch(50% 0.130 152);
+  --color-ok-bg:         oklch(96.5% 0.028 152);
+  --color-ok-border:     oklch(84% 0.052 152);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Base
+   ───────────────────────────────────────────────────────────────────────── */
+html { color-scheme: dark; }
+[data-theme="light"] { color-scheme: light; }
+
 body {
   background-color: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01", "cv11";
 }
 
 :focus-visible {
@@ -56,6 +105,103 @@ body {
   outline-offset: 2px;
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: oklch(84% 0.005 65); border-radius: 3px; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--color-ink-3) 30%, transparent);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--color-ink-3) 55%, transparent);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Ambient hero glow — radial amber wash behind the dashboard hero
+   ───────────────────────────────────────────────────────────────────────── */
+.glow-bg {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 540px;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(60% 70% at 50% 0%,
+      color-mix(in oklch, var(--color-accent-glow) 38%, transparent) 0%,
+      color-mix(in oklch, var(--color-accent-glow) 14%, transparent) 35%,
+      transparent 70%);
+  filter: blur(40px);
+  opacity: 1;
+}
+[data-theme="light"] .glow-bg { opacity: 0.55; }
+
+.grid-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, color-mix(in oklch, var(--color-ink-3) 8%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--color-ink-3) 8%, transparent) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(80% 60% at 50% 0%, black, transparent 80%);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Surface treatments
+   ───────────────────────────────────────────────────────────────────────── */
+.panel {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+}
+.panel-quiet {
+  background-color: color-mix(in oklch, var(--color-surface) 80%, transparent);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 14px;
+}
+
+/* Tabular nums utility (used heavily) */
+.nums { font-variant-numeric: tabular-nums; }
+
+/* Soft inner shadow for cards on dark */
+.card-inset {
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, var(--color-ink) 5%, transparent),
+    0 1px 0 color-mix(in oklch, black 25%, transparent);
+}
+[data-theme="light"] .card-inset {
+  box-shadow:
+    inset 0 1px 0 white,
+    0 1px 0 color-mix(in oklch, var(--color-ink) 4%, transparent);
+}
+
+/* Pulsing dot — used for live indicators */
+@keyframes voxray-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.6; transform: scale(1.35); }
+}
+.dot-live {
+  position: relative;
+  width: 8px; height: 8px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 0 color-mix(in oklch, var(--color-accent) 60%, transparent);
+}
+.dot-live::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--color-accent) 30%, transparent);
+  animation: voxray-pulse 1.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.dot-crit { background: var(--color-crit); }
+.dot-warn { background: var(--color-warn); }
+.dot-ok   { background: var(--color-ok); }
+
+/* Subtle entrance for server-rendered sections (motion layer adds richer GSAP) */
+@keyframes voxray-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.rise { animation: voxray-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) both; }
