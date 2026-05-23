@@ -1,156 +1,287 @@
 import Link from 'next/link';
+import { HeroScroll, type Phase } from '@/app/components/HeroScroll';
 
 export const revalidate = 3600;
 
-const STATS = [
-  { value: '1,808', label: 'calls analyzed' },
-  { value: '52%',   label: 'error rate found' },
-  { value: '11',    label: 'agents monitored' },
-  { value: '21',    label: 'error types detected' },
+// ── Video 1 (hero-main.mp4 — 8 s) ──────────────────────────────────────────
+// Each phase spans ~2.5 s of video content at 400 vh total scroll distance.
+const PHASES_MAIN: Phase[] = [
+  {
+    start: 0.0,
+    end:   0.30,
+    eyebrow: 'Production Voice AI Observability',
+    headline: 'X-ray vision\nfor voice agents',
+    body: 'Every call analyzed. Every mistake found. Before the client calls to complain.',
+  },
+  {
+    start: 0.32,
+    end:   0.62,
+    eyebrow: '1,808 calls · Uganda production',
+    headline: '52% had errors.\nWe found them first.',
+    body: 'Ramco Gas, Edifice Properties, Davansh Investment. Real calls. Real stakes.',
+  },
+  {
+    start: 0.65,
+    end:   0.93,
+    eyebrow: 'Webhook → Haiku → Telegram',
+    headline: 'Seconds after\nthe call ends.',
+    body: 'No polling. No batch delay. The pipeline fires the moment Ultravox signals call-ended.',
+    cta: { label: 'Open dashboard', href: '/dashboard' },
+  },
 ];
 
-const FEATURES = [
+// ── Video 2 (hero-feature.mp4 — 5.3 s) ──────────────────────────────────────
+const PHASES_FEATURE: Phase[] = [
+  {
+    start: 0.04,
+    end:   0.47,
+    eyebrow: 'Find → Replace patch system',
+    headline: 'Exact line.\nVerified fix.',
+    body: '21 error types. Each with a structured prompt patch. Line numbers checked against the live system prompt before apply.',
+  },
+  {
+    start: 0.55,
+    end:   0.95,
+    eyebrow: 'Repeat error tracker · auto-heal',
+    headline: 'Fixes itself\nwhile you sleep.',
+    body: '3 alert tiers: regression, fix available, write patch. Auto-applies when false-positive rate stays under 5%.',
+    cta: { label: 'View agent profiles', href: '/dashboard' },
+  },
+];
+
+const SYSTEM_FEATURES = [
   {
     title: 'Error detection per call',
-    body: 'Claude Haiku 4.5 audits every transcript against agent-type-specific rules. 21 error types, severity-ranked, with exact agent quotes.',
-  },
-  {
-    title: 'LLM observability',
-    body: 'Every Haiku call logs latency, token cost, and model version to llm_traces. p50/p95 latency and daily cost visible in the dashboard.',
-  },
-  {
-    title: 'Eval framework',
-    body: 'Human FP marks drive precision per error type. Each error shows a confidence score and a 🟢/🟡/🔴 quality badge. Model accountability, not just model output.',
+    body:  'Claude Haiku 4.5 audits every transcript against agent-type-specific rules. 21 error types, severity-ranked, exact agent quotes.',
   },
   {
     title: 'Prompt versioning',
-    body: 'SHA-256 hashes agent system prompts at analysis time. Error rate by prompt version shows whether fixes actually work.',
+    body:  'SHA-256 hashes agent system prompts at analysis time. Error rate by prompt version shows whether fixes actually work.',
   },
   {
     title: 'Real-time pipeline',
-    body: 'Ultravox webhook fires within seconds of call end. HMAC-verified, 204 ACK instant, analysis runs in next/server after(). No polling.',
+    body:  'Ultravox webhook fires within seconds of call end. HMAC-verified, 204 ACK instant, analysis runs server-side after().',
+  },
+  {
+    title: 'Eval framework',
+    body:  'Human FP marks drive precision per error type. Each error shows a confidence score and a quality badge. Model accountability.',
+  },
+  {
+    title: 'LLM observability',
+    body:  'Every Haiku call logs latency, token cost, and model version to llm_traces. p50/p95 and daily cost visible on the dashboard.',
   },
   {
     title: 'Fix suggestions',
-    body: 'Structured Find → Replace patches per error type. Live prompt check marks already-applied fixes. 21 patch specs, each with root cause analysis.',
+    body:  'Structured Find → Replace patches per error type. Live prompt check marks already-applied fixes. 21 patch specs, each with root-cause analysis.',
   },
-];
+] as const;
+
+const STACK = [
+  ['Framework',     'Next.js 16 App Router'],
+  ['AI primary',    'Claude Haiku 4.5 (Anthropic)'],
+  ['AI enrichment', 'Llama 3.2 (self-hosted)'],
+  ['Database',      'Supabase (Postgres)'],
+  ['Voice platform','Ultravox (webhook + REST)'],
+  ['Alerts',        'Telegram Bot API'],
+  ['Deployment',    'Vercel (serverless + cron)'],
+  ['Observability', 'llm_traces: latency · tokens · cost'],
+  ['Performance',   '8 RPC functions, <2s load'],
+] as const;
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-canvas">
-      {/* Nav */}
-      <header className="border-b border-border bg-surface sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-6 h-12 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-accent text-white text-[11px] font-bold leading-none">V</span>
-            <span className="font-semibold text-[14px] tracking-tight text-ink">Voxray</span>
-          </div>
-          <Link
-            href="/dashboard"
-            className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
+    <div className="bg-canvas min-h-screen">
+
+      {/* ── Nav ─────────────────────────────────────────────────────── */}
+      <header
+        className="fixed top-0 inset-x-0 z-50 h-12 border-b flex items-center px-8 md:px-12"
+        style={{
+          borderColor: 'oklch(28% 0.013 55 / 0.6)',
+          background:  'oklch(14% 0.012 55 / 0.82)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+        }}
+      >
+        <div className="flex-1 flex items-center gap-2.5">
+          <span
+            className="inline-flex items-center justify-center w-5 h-5 rounded-md text-[11px] font-black leading-none select-none"
+            style={{ background: 'var(--color-accent)', color: 'var(--color-canvas)' }}
           >
-            Dashboard →
-          </Link>
+            V
+          </span>
+          <span className="font-semibold text-[14px] tracking-tight text-ink">
+            Voxray
+          </span>
         </div>
+        <Link
+          href="/dashboard"
+          className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
+        >
+          Dashboard →
+        </Link>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6">
+      {/* ── Hero scroll 1 — main (8 s video) ────────────────────────── */}
+      <HeroScroll
+        src="/hero-main.mp4"
+        scrollHeight="400vh"
+        phases={PHASES_MAIN}
+      />
 
-        {/* Hero */}
-        <section className="pt-20 pb-16 border-b border-border">
-          <div className="max-w-2xl">
-            <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-4">
-              Production Voice AI Observability
-            </div>
-            <h1 className="text-4xl font-black text-ink leading-tight tracking-tight mb-6">
-              X-ray vision for<br />Ultravox voice agents
-            </h1>
-            <p className="text-base text-ink-2 leading-relaxed mb-8 max-w-xl">
-              Voxray detects exact agent mistakes per call, surfaces error patterns across agents,
-              and drives a prompt improvement feedback loop — replacing manual call review with
-              automated AI evaluation. Built on real Uganda production data.
-            </p>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                View dashboard
-              </Link>
-              <a
-                href="https://github.com/rushilbh27/voxray"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-ink-3 hover:text-ink transition-colors"
-              >
-                GitHub →
-              </a>
-            </div>
-          </div>
-        </section>
+      {/* ── Hero scroll 2 — feature (5.3 s video) ───────────────────── */}
+      <HeroScroll
+        src="/hero-feature.mp4"
+        scrollHeight="310vh"
+        phases={PHASES_FEATURE}
+      />
 
-        {/* Stats */}
-        <section className="py-10 border-b border-border">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {STATS.map(({ value, label }) => (
-              <div key={label}>
-                <div className="text-3xl font-black text-ink tabular-nums mb-1">{value}</div>
-                <div className="text-xs text-ink-3 uppercase tracking-wide font-medium">{label}</div>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-ink-3 mt-6">
-            Real production data — Uganda B2B clients: Ramco Gas, Edifice Properties, Davansh Investment.
+      {/* ── Editorial statement ──────────────────────────────────────── */}
+      <section
+        className="border-t"
+        style={{ borderColor: 'var(--color-border)' }}
+      >
+        <div className="max-w-5xl mx-auto px-8 md:px-12 py-24">
+          <p
+            className="text-4xl md:text-[3.25rem] font-black leading-[1.08] tracking-[-0.025em] max-w-[22ch]"
+            style={{ color: 'var(--color-ink)' }}
+          >
+            1,808 calls analyzed.{' '}
+            <span style={{ color: 'var(--color-accent)' }}>52%</span> had errors.
+            All caught before Uganda clients noticed.
           </p>
-        </section>
 
-        {/* Features */}
-        <section className="py-12 border-b border-border">
-          <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-8">System design</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-            {FEATURES.map(({ title, body }) => (
+          <p
+            className="mt-7 text-[15px] max-w-[56ch] leading-relaxed"
+            style={{ color: 'var(--color-ink-2)' }}
+          >
+            Voxray answers: what broke, which agent, how often, what to fix.
+            Not a metrics viewer — a closed feedback loop between live call mistakes and prompt patches.
+          </p>
+
+          <div className="mt-10 flex items-center gap-4">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg bg-accent hover:bg-accent-hover text-canvas transition-colors"
+            >
+              Open dashboard
+            </Link>
+            <a
+              href="https://github.com/rushilbh27/voxray"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-ink-3 hover:text-ink transition-colors"
+            >
+              GitHub →
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── System design ────────────────────────────────────────────── */}
+      <section
+        className="border-t"
+        style={{ borderColor: 'var(--color-border)' }}
+      >
+        <div className="max-w-5xl mx-auto px-8 md:px-12 py-20">
+          <p
+            className="text-[10px] font-bold uppercase tracking-[0.22em] mb-12"
+            style={{ color: 'var(--color-ink-3)' }}
+          >
+            System design
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-10">
+            {SYSTEM_FEATURES.map(({ title, body }) => (
               <div key={title}>
-                <h3 className="text-sm font-semibold text-ink mb-1.5">{title}</h3>
-                <p className="text-sm text-ink-2 leading-relaxed">{body}</p>
+                <h3
+                  className="text-sm font-semibold mb-1.5"
+                  style={{ color: 'var(--color-ink)' }}
+                >
+                  {title}
+                </h3>
+                <p
+                  className="text-sm leading-relaxed"
+                  style={{ color: 'var(--color-ink-2)' }}
+                >
+                  {body}
+                </p>
               </div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Architecture */}
-        <section className="py-12 border-b border-border">
-          <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-6">Stack</div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-            {[
-              ['Framework',        'Next.js 16 App Router'],
-              ['AI primary',       'Claude Haiku 4.5 (Anthropic)'],
-              ['AI enrichment',    'Llama 3.2 (self-hosted)'],
-              ['Database',         'Supabase (Postgres)'],
-              ['Voice platform',   'Ultravox (webhook + REST)'],
-              ['Alerts',           'Telegram Bot API'],
-              ['Deployment',       'Vercel (serverless + cron)'],
-              ['Performance',      '8 Postgres RPC functions, <2s load'],
-              ['Observability',    'llm_traces: latency · tokens · cost'],
-            ].map(([layer, tech]) => (
+      {/* ── Stack ────────────────────────────────────────────────────── */}
+      <section
+        className="border-t"
+        style={{ borderColor: 'var(--color-border)' }}
+      >
+        <div className="max-w-5xl mx-auto px-8 md:px-12 py-16">
+          <p
+            className="text-[10px] font-bold uppercase tracking-[0.22em] mb-8"
+            style={{ color: 'var(--color-ink-3)' }}
+          >
+            Stack
+          </p>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
+            {STACK.map(([layer, tech]) => (
               <div key={layer} className="flex flex-col gap-0.5">
-                <span className="text-[11px] text-ink-3 uppercase tracking-wide font-medium">{layer}</span>
-                <span className="text-ink font-medium text-sm">{tech}</span>
+                <span
+                  className="text-[10px] uppercase tracking-wide font-semibold"
+                  style={{ color: 'var(--color-ink-3)' }}
+                >
+                  {layer}
+                </span>
+                <span
+                  className="text-sm font-medium"
+                  style={{ color: 'var(--color-ink)' }}
+                >
+                  {tech}
+                </span>
               </div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Footer */}
-        <footer className="py-8 flex items-center justify-between text-xs text-ink-3">
-          <span>Built by <a href="https://github.com/rushilbh27" className="text-ink-2 hover:text-ink transition-colors">Rushil Bhor</a></span>
-          <div className="flex items-center gap-4">
-            <a href="https://github.com/rushilbh27/voxray" target="_blank" rel="noopener noreferrer" className="hover:text-ink transition-colors">GitHub</a>
-            <Link href="/dashboard" className="hover:text-ink transition-colors">Dashboard</Link>
+      {/* ── Footer ───────────────────────────────────────────────────── */}
+      <footer
+        className="border-t"
+        style={{ borderColor: 'var(--color-border)' }}
+      >
+        <div
+          className="max-w-5xl mx-auto px-8 md:px-12 py-8 flex items-center justify-between text-xs"
+          style={{ color: 'var(--color-ink-3)' }}
+        >
+          <span>
+            Built by{' '}
+            <a
+              href="https://github.com/rushilbh27"
+              className="transition-colors"
+              style={{ color: 'var(--color-ink-2)' }}
+            >
+              Rushil Bhor
+            </a>
+          </span>
+          <div className="flex items-center gap-5">
+            <a
+              href="https://github.com/rushilbh27/voxray"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-ink-3 hover:text-ink transition-colors"
+            >
+              GitHub
+            </a>
+            <Link
+              href="/dashboard"
+              className="text-ink-3 hover:text-ink transition-colors"
+            >
+              Dashboard
+            </Link>
           </div>
-        </footer>
-
-      </main>
+        </div>
+      </footer>
     </div>
   );
 }
