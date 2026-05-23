@@ -503,34 +503,37 @@ export default async function AgentProfilePage({
         </section>
 
         {/* Error Heatmap — 30-day calendar */}
-        {heatmapRows.length > 0 && (
-          <section className="mb-10">
-            <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Error Heatmap · Last 30 Days</div>
-            <div className="bg-surface border border-border rounded-xl p-5">
-              <div className="mb-4">
-                <h2 className="text-sm font-semibold text-ink">Which days errors fired · {clientName}</h2>
-                <p className="text-xs text-ink-3 mt-0.5">Each square = one day. Darker = more calls with that error. Patterns reveal systematic issues.</p>
-              </div>
-              <ErrorHeatmap rows={heatmapRows} />
+        <section className="mb-10">
+          <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Error Heatmap · Last 30 Days</div>
+          <div className="bg-surface border border-border rounded-xl p-5">
+            <div className="mb-4">
+              <h2 className="text-sm font-semibold text-ink">Which days errors fired · {clientName}</h2>
+              <p className="text-xs text-ink-3 mt-0.5">Each square = one day. Darker = more calls with that error. Patterns reveal systematic issues.</p>
             </div>
-          </section>
-        )}
+            {heatmapRows.length > 0 ? (
+              <ErrorHeatmap rows={heatmapRows} />
+            ) : (
+              <div className="py-8 text-center">
+                <div className="text-sm font-medium text-ok mb-1">✓ No errors in the last 30 days</div>
+                <div className="text-xs text-ink-3">All calls analyzed cleanly — no recurring patterns to show.</div>
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* Goal Outcome Trend */}
-        {outcomeData.length > 0 && (
-          <section className="mb-10">
-            <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Call Outcome Trend · 12 Weeks</div>
-            <div className="bg-surface border border-border rounded-xl p-5">
-              <div className="mb-4 flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-sm font-semibold text-ink">Success rate over time · {clientName}</h2>
-                  <p className="text-xs text-ink-3 mt-0.5">Success rate drops here signal problems before error count spikes.</p>
-                </div>
+        <section className="mb-10">
+          <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Call Outcome Trend · 12 Weeks</div>
+          <div className="bg-surface border border-border rounded-xl p-5">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-sm font-semibold text-ink">Success rate over time · {clientName}</h2>
+                <p className="text-xs text-ink-3 mt-0.5">Success rate drops here signal problems before error count spikes.</p>
               </div>
-              <OutcomeChart data={outcomeData} />
             </div>
-          </section>
-        )}
+            <OutcomeChart data={outcomeData} />
+          </div>
+        </section>
 
         {/* Before/After Comparison */}
         <section className="mb-10">
@@ -544,7 +547,7 @@ export default async function AgentProfilePage({
               <CompareForm agentId={agentId} currentCompare={compareDate} />
             </div>
             {compareData && compareData.length > 0 ? (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {compareData.map((row) => {
                   const before = row.before_count;
                   const after = row.after_count;

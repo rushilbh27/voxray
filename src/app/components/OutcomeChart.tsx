@@ -10,13 +10,15 @@ import {
 } from 'recharts';
 import type { OutcomePoint } from '@/lib/outcome-utils';
 
+// OKLCH literals — cannot use CSS vars in SVG fill attributes.
+// Matched to the design token palette (ok / warn / crit + neutrals).
 const OUTCOME_COLORS: Record<string, string> = {
-  success:        '#22c55e',
-  no_answer:      '#6b7280',
-  not_interested: '#eab308',
-  incomplete:     '#f97316',
-  no_save:        '#ef4444',
-  other:          '#94a3b8',
+  success:        'oklch(72% 0.130 152)',  // --color-ok
+  no_answer:      'oklch(48% 0.010 55)',   // muted warm neutral
+  not_interested: 'oklch(80% 0.155 75)',   // --color-warn
+  incomplete:     'oklch(74% 0.170 42)',   // orange
+  no_save:        'oklch(70% 0.215 25)',   // --color-crit
+  other:          'oklch(62% 0.012 55)',   // dimmed neutral
 };
 
 const OUTCOME_LABELS: Record<string, string> = {
@@ -46,15 +48,43 @@ export function OutcomeChart({ data }: Props) {
   return (
     <ResponsiveContainer width="100%" height={200}>
       <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-        <XAxis dataKey="week" tick={{ fontSize: 10, fill: 'var(--ink-3)' }} axisLine={false} tickLine={false} />
-        <YAxis tick={{ fontSize: 10, fill: 'var(--ink-3)' }} axisLine={false} tickLine={false} allowDecimals={false} />
-        <Tooltip
-          contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
-          labelStyle={{ color: 'var(--ink)', fontWeight: 600 }}
+        <XAxis
+          dataKey="week"
+          tick={{ fontSize: 10, fill: 'var(--color-ink-3)' }}
+          axisLine={false}
+          tickLine={false}
         />
-        <Legend wrapperStyle={{ fontSize: 10, paddingTop: 8 }} formatter={(v) => OUTCOME_LABELS[v] ?? v} />
+        <YAxis
+          tick={{ fontSize: 10, fill: 'var(--color-ink-3)' }}
+          axisLine={false}
+          tickLine={false}
+          allowDecimals={false}
+        />
+        <Tooltip
+          contentStyle={{
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 8,
+            fontSize: 12,
+          }}
+          labelStyle={{ color: 'var(--color-ink)', fontWeight: 600 }}
+          itemStyle={{ color: 'var(--color-ink-2)' }}
+          cursor={{ fill: 'color-mix(in oklch, var(--color-ink-3) 8%, transparent)' }}
+        />
+        <Legend
+          wrapperStyle={{ fontSize: 10, paddingTop: 8 }}
+          formatter={(v) => (
+            <span style={{ color: 'var(--color-ink-3)' }}>{OUTCOME_LABELS[v] ?? v}</span>
+          )}
+        />
         {keys.map((key) => (
-          <Bar key={key} dataKey={key} stackId="outcomes" fill={OUTCOME_COLORS[key]} radius={key === 'other' ? [2, 2, 0, 0] : [0, 0, 0, 0]}>
+          <Bar
+            key={key}
+            dataKey={key}
+            stackId="outcomes"
+            fill={OUTCOME_COLORS[key]}
+            radius={key === 'other' ? [2, 2, 0, 0] : [0, 0, 0, 0]}
+          >
             {data.map((_, i) => <Cell key={i} fill={OUTCOME_COLORS[key]} />)}
           </Bar>
         ))}

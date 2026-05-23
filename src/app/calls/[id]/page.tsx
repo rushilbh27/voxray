@@ -55,8 +55,8 @@ export default async function CallDetailPage({ params }: Props) {
       <main className="max-w-6xl mx-auto px-6 pb-16">
         {/* Breadcrumb */}
         <div className="py-4 mb-2">
-          <Link href="/" className="text-xs text-ink-3 hover:text-accent transition-colors">
-            ← Dashboard
+          <Link href="/dashboard" className="text-xs text-ink-3 hover:text-accent transition-colors">
+            ← Back to Dashboard
           </Link>
         </div>
 

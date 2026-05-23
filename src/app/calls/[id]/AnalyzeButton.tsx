@@ -28,7 +28,7 @@ export default function AnalyzeButton({ callId, status }: Props) {
 
   if (loading || status === 'analyzing') {
     return (
-      <span className="text-xs text-blue-500 animate-pulse">Analyzing...</span>
+      <span className="text-xs text-accent animate-pulse">Analyzing…</span>
     );
   }
 
@@ -36,7 +36,7 @@ export default function AnalyzeButton({ callId, status }: Props) {
     return (
       <button
         onClick={() => run(true)}
-        className="text-xs text-gray-400 hover:text-gray-600"
+        className="text-xs text-ink-3 hover:text-ink-2 transition-colors"
       >
         Re-analyze
       </button>
@@ -46,7 +46,7 @@ export default function AnalyzeButton({ callId, status }: Props) {
   return (
     <button
       onClick={() => run(false)}
-      className="px-3 py-1.5 text-xs font-medium bg-gray-900 text-white rounded-md hover:bg-gray-700 transition-colors"
+      className="px-3 py-1.5 text-xs font-medium bg-accent text-canvas rounded-md hover:bg-accent-hover transition-colors"
     >
       Analyze
     </button>

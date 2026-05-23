@@ -36,10 +36,13 @@ export function ErrorHeatmap({ rows }: Props) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-[10px]">
+      <table className="w-full text-[10px]" style={{ minWidth: 480 }}>
         <thead>
           <tr>
-            <th className="text-left text-ink-3 font-medium pr-3 pb-1 w-40">Error type</th>
+            {/* sticky label column header */}
+            <th className="sticky left-0 z-10 bg-surface text-left text-ink-3 font-medium pr-3 pb-1 w-40">
+              Error type
+            </th>
             {rows[0].days.map((d, i) => (
               <th
                 key={i}
@@ -57,7 +60,8 @@ export function ErrorHeatmap({ rows }: Props) {
             const total = row.days.reduce((s, d) => s + d.count, 0);
             return (
               <tr key={row.errorType} className="group">
-                <td className="pr-3 py-0.5 text-ink-2 font-medium truncate max-w-[160px] group-hover:text-ink transition-colors">
+                {/* sticky label cell */}
+                <td className="sticky left-0 z-10 bg-surface pr-3 py-0.5 text-ink-2 font-medium truncate max-w-[160px] group-hover:text-ink transition-colors">
                   {row.label}
                 </td>
                 {row.days.map((d, i) => (

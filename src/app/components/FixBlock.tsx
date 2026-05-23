@@ -21,7 +21,7 @@ function CopyBtn({ text }: { text: string }) {
   return (
     <button
       onClick={copy}
-      className="shrink-0 px-2 py-0.5 text-xs rounded border border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
+      className="shrink-0 px-2 py-0.5 text-[11px] rounded border border-border text-ink-3 hover:border-border-strong hover:text-ink-2 transition-colors font-mono"
       title="Copy to clipboard"
     >
       {copied ? '✓' : 'Copy'}
@@ -31,46 +31,49 @@ function CopyBtn({ text }: { text: string }) {
 
 export function FixBlock({ patches }: { patches: Patch[] }) {
   return (
-    <div className="mt-1.5 space-y-3">
+    <div className="mt-1.5 space-y-2.5">
       {patches.map((p, i) => (
-        <div key={i} className="rounded border border-gray-200 overflow-hidden text-xs">
-          {/* Label */}
-          <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border-b border-gray-200">
-            <span className="font-medium text-gray-700">{p.label}</span>
+        <div key={i} className="rounded-lg border border-border overflow-hidden text-xs">
+
+          {/* Label bar */}
+          <div className="flex items-center justify-between px-3 py-1.5 bg-surface-2 border-b border-border">
+            <span className="font-medium text-ink-2 text-[11px]">{p.label}</span>
             {p.alreadyFixed && (
-              <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+              <span className="px-2 py-0.5 bg-ok-bg text-ok border border-ok-border rounded-md text-[10px] font-medium">
                 ✓ Already fixed
               </span>
             )}
           </div>
 
-          {p.alreadyFixed && (
-            <div className="px-3 py-2 text-gray-500 italic bg-gray-50 border-b border-gray-200 text-xs">
-              This patch is already present in the current prompt.
+          {p.alreadyFixed ? (
+            <div className="px-3 py-2.5 text-ink-3 italic bg-surface text-[11px]">
+              Patch already present in current prompt.
             </div>
+          ) : (
+            <>
+              {/* Find */}
+              <div className="border-b border-border">
+                <div className="flex items-center justify-between px-3 py-1 bg-crit-bg border-b border-crit-border/50">
+                  <span className="text-crit font-semibold uppercase tracking-wider text-[10px]">Find</span>
+                  <CopyBtn text={p.find} />
+                </div>
+                <pre className="px-3 py-2 text-ink-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap bg-canvas overflow-x-auto">
+                  {p.find}
+                </pre>
+              </div>
+
+              {/* Replace */}
+              <div>
+                <div className="flex items-center justify-between px-3 py-1 bg-ok-bg border-b border-ok-border/50">
+                  <span className="text-ok font-semibold uppercase tracking-wider text-[10px]">Replace with</span>
+                  <CopyBtn text={p.replace} />
+                </div>
+                <pre className="px-3 py-2 text-ink-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap bg-canvas overflow-x-auto">
+                  {p.replace}
+                </pre>
+              </div>
+            </>
           )}
-
-          {/* Find */}
-          <div className="border-b border-gray-200">
-            <div className="flex items-center justify-between px-3 py-1 bg-red-50">
-              <span className="text-red-600 font-semibold uppercase tracking-wide text-[10px]">Find</span>
-              <CopyBtn text={p.find} />
-            </div>
-            <pre className="px-3 py-2 text-gray-700 font-mono text-[11px] leading-relaxed whitespace-pre-wrap bg-red-50/30 overflow-x-auto">
-              {p.find}
-            </pre>
-          </div>
-
-          {/* Replace */}
-          <div>
-            <div className="flex items-center justify-between px-3 py-1 bg-green-50">
-              <span className="text-green-700 font-semibold uppercase tracking-wide text-[10px]">Replace with</span>
-              <CopyBtn text={p.replace} />
-            </div>
-            <pre className="px-3 py-2 text-gray-700 font-mono text-[11px] leading-relaxed whitespace-pre-wrap bg-green-50/30 overflow-x-auto">
-              {p.replace}
-            </pre>
-          </div>
         </div>
       ))}
     </div>
