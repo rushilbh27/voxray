@@ -33,24 +33,47 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
-      <div className="w-full max-w-[360px]">
-        {/* Mark */}
-        <div className="flex items-center gap-2.5 mb-10 justify-center">
-          <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-accent text-white text-sm font-bold">
+    <div className="min-h-screen bg-canvas flex items-center justify-center p-4 relative overflow-hidden">
+
+      {/* Ambient glow */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: [
+            'radial-gradient(ellipse 60% 40% at 50% 40%, oklch(65% 0.18 55 / 0.13) 0%, transparent 70%)',
+            'radial-gradient(ellipse 40% 30% at 50% 60%, oklch(55% 0.22 55 / 0.07) 0%, transparent 60%)',
+          ].join(', '),
+        }}
+      />
+
+      <div className="w-full max-w-[380px] relative z-10">
+
+        {/* Logo */}
+        <div className="flex items-center gap-3 mb-10 justify-center">
+          <span className="inline-flex items-center justify-center w-8 h-8 bg-accent text-canvas font-black text-[13px]">
             V
           </span>
-          <span className="text-xl font-semibold tracking-tight text-ink">Voxray</span>
+          <span className="text-[18px] font-bold tracking-tight text-ink">Voxray</span>
         </div>
 
         {/* Card */}
-        <div className="bg-surface border border-border rounded-xl p-7 shadow-sm">
-          <h1 className="text-[17px] font-semibold text-ink mb-1">Sign in</h1>
-          <p className="text-sm text-ink-3 mb-6">Access is invite-only.</p>
+        <div className="bg-surface border border-border p-8">
+
+          {/* Header */}
+          <div className="mb-7">
+            <h1 className="text-[17px] font-bold text-ink mb-1 tracking-tight">Sign in</h1>
+            <p className="text-[12px] uppercase tracking-[0.16em] text-ink-3 font-[family-name:var(--font-mono)]">
+              Access is invite-only
+            </p>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+
             <div>
-              <label className="block text-xs font-medium text-ink-2 mb-1.5">Email</label>
+              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-3 mb-2 font-[family-name:var(--font-mono)]">
+                Email
+              </label>
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -59,24 +82,26 @@ export default function LoginPage() {
                 autoFocus
                 autoComplete="email"
                 placeholder="you@example.com"
-                className="w-full h-9 px-3 rounded-lg border border-border bg-canvas text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-accent-border transition-colors"
+                className="w-full h-10 px-3 border border-border bg-canvas text-[13px] text-ink placeholder:text-ink-3 focus:outline-none focus:border-accent transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-ink-2 mb-1.5">Password</label>
+              <label className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-3 mb-2 font-[family-name:var(--font-mono)]">
+                Password
+              </label>
               <input
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 type="password"
                 required
                 autoComplete="current-password"
-                className="w-full h-9 px-3 rounded-lg border border-border bg-canvas text-sm text-ink focus:outline-none focus:border-accent-border transition-colors"
+                className="w-full h-10 px-3 border border-border bg-canvas text-[13px] text-ink focus:outline-none focus:border-accent transition-colors"
               />
             </div>
 
             {error && (
-              <p className="text-xs text-crit bg-crit-bg border border-crit-border px-3 py-2 rounded-lg">
+              <p className="text-[11px] text-crit bg-crit-bg border border-crit-border px-3 py-2 font-[family-name:var(--font-mono)]">
                 {error}
               </p>
             )}
@@ -84,12 +109,19 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-9 rounded-lg bg-accent hover:bg-accent-hover text-white text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-1"
+              className="w-full h-10 bg-accent hover:bg-accent-hover text-canvas text-[11px] font-bold uppercase tracking-[0.12em] transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2 border border-accent-border font-[family-name:var(--font-mono)]"
             >
               {loading ? 'Signing in…' : 'Sign in'}
             </button>
+
           </form>
         </div>
+
+        {/* Footer hint */}
+        <p className="text-center text-[10px] uppercase tracking-[0.18em] text-ink-3/50 mt-6 font-[family-name:var(--font-mono)]">
+          Voxray · Voice AI Observability
+        </p>
+
       </div>
     </div>
   );
