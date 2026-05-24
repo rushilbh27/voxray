@@ -8,8 +8,8 @@
  * has fired for this agent in the last 30 days. If it crosses REPEAT_THRESHOLD:
  *   - FIX REGRESSION: fix was applied but error came back → urgent
  *   - Fix available but not applied → send apply-now alert
- *   - FP rate < 5% + error count >= 5 → auto-apply (allowlisted agents only)
  *   - No fix defined → write-patch alert
+ * Auto-apply is DISABLED. Tracker only sends Telegram alerts. Operator applies manually.
  *
  * Called from webhook/call-ended after analysis — non-blocking, fire-and-forget.
  */
@@ -25,17 +25,12 @@ const REPEAT_THRESHOLD = 3;
 /** Look-back window for counting past occurrences */
 const WINDOW_DAYS = 30;
 
-/** FP rate below this → consider auto-apply */
-const AUTO_APPLY_FP_THRESHOLD = 0.05; // 5%
-
 /** Minimum eval data points needed to trust FP rate */
 const MIN_EVAL_SAMPLES = 10;
 
-/** Agents allowed to receive automated prompt patches */
-const AUTO_APPLY_ALLOWLIST = new Set([
-  '428d7591-3ba5-4b60-8aa5-a92012d12451', // NECTOR Demo
-  '0a5b5ccc-4f75-456c-94c8-f9e7293f9d81', // Davansh Investment
-]);
+// Auto-apply is DISABLED. All patches are manual-only.
+// Operator must click "Apply fix" / "Apply all" on the agent profile page.
+// AUTO_APPLY_ALLOWLIST intentionally empty — do not add agents without operator consent.
 
 const ULTRAVOX_API = 'https://api.ultravox.ai/api';
 const BASE_URL = process.env.VOXRAY_URL ?? 'https://voxray.vercel.app';
@@ -190,26 +185,15 @@ export async function checkRepeatErrors(
     const fpRate = evalStats && evalStats.total_flags >= MIN_EVAL_SAMPLES
       ? evalStats.fp_count / evalStats.total_flags
       : null;
-    const canAutoApply =
-      hasFix &&
-      AUTO_APPLY_ALLOWLIST.has(agentId) &&
-      fpRate !== null &&
-      fpRate < AUTO_APPLY_FP_THRESHOLD;
 
-    let autoApplied = false;
-
-    if (canAutoApply && !fixAppliedAt) {
-      // Conditions met: allowlisted agent + high precision + recurring → auto-apply
-      autoApplied = await applyPatchInternal(agentId, agentName, errorType);
-    }
-
+    // Auto-apply DISABLED — all fixes are manual only.
     results.push({
       type: errorType,
       total_count: totalCount,
       has_fix: hasFix,
       fix_was_applied: !!fixAppliedAt,
       fix_applied_at: fixAppliedAt,
-      auto_applied: autoApplied,
+      auto_applied: false,
     });
 
     // Build alert block for this error
@@ -217,13 +201,7 @@ export async function checkRepeatErrors(
       ? ` (${Math.round((1 - fpRate) * 100)}% precision)`
       : '';
 
-    if (autoApplied) {
-      alertBlocks.push(
-        `✅ <b>AUTO-FIXED: ${errorType}</b>\n` +
-        `   Fired ${totalCount}x in ${WINDOW_DAYS}d${precisionNote}\n` +
-        `   Patch automatically applied — no action needed.`
-      );
-    } else if (fixAppliedAt) {
+    if (fixAppliedAt) {
       const appliedDate = new Date(fixAppliedAt).toLocaleDateString();
       alertBlocks.push(
         `🚨 <b>FIX REGRESSION: ${errorType}</b>\n` +

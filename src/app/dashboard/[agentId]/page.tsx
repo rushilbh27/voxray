@@ -28,10 +28,9 @@ import { CompareForm } from './CompareForm';
 
 export const revalidate = 60;
 
-const ALLOWED_AGENT_IDS = [
-  '428d7591-3ba5-4b60-8aa5-a92012d12451', // NECTOR Demo
-  '0a5b5ccc-4f75-456c-94c8-f9e7293f9d81', // Davansh Investment
-];
+// All agents are now in the server-side allowlist (apply-fix/route.ts).
+// isAllowlisted = true for every agent on this page.
+const ALLOWED_AGENT_IDS: string[] = [];
 
 // DB client_name → human display name (some agents have inconsistent raw names)
 const DISPLAY_NAMES: Record<string, string> = {
@@ -169,7 +168,7 @@ export default async function AgentProfilePage({
   ]);
 
   const prompt = agent?.systemPrompt ?? '';
-  const isAllowlisted = ALLOWED_AGENT_IDS.includes(agentId);
+  const isAllowlisted = true; // all agents in server-side allowlist
 
   // Compute agent-level stats from aggRows
   const allCalls = aggRows ?? [];

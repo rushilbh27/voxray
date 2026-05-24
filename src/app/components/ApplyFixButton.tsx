@@ -1,24 +1,18 @@
 'use client';
 import { useState } from 'react';
 
-// Only NECTOR_DEMO is allowed — matches server-side allowlist
-const NECTOR_DEMO_ID = '428d7591-3ba5-4b60-8aa5-a92012d12451';
-
 interface Props {
-  agentId:    string;
-  agentName:  string;
-  errorType:  string;
+  agentId:     string;
+  agentName:   string;
+  errorType:   string;
   description?: string;
 }
 
 type State = 'idle' | 'confirming' | 'applying' | 'done' | 'already_applied' | 'error';
 
 export function ApplyFixButton({ agentId, agentName, errorType, description }: Props) {
-  const [state, setState]  = useState<State>('idle');
+  const [state, setState]   = useState<State>('idle');
   const [errMsg, setErrMsg] = useState('');
-
-  // Only render for NECTOR_DEMO
-  if (agentId !== NECTOR_DEMO_ID) return null;
 
   async function apply() {
     setState('applying');
@@ -46,7 +40,7 @@ export function ApplyFixButton({ agentId, agentName, errorType, description }: P
   if (state === 'done') {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-ok font-medium">
-        ✓ Applied to {agentName}
+        ✓ Patched — {agentName}
       </span>
     );
   }
@@ -72,13 +66,15 @@ export function ApplyFixButton({ agentId, agentName, errorType, description }: P
 
   if (state === 'confirming') {
     return (
-      <span className="inline-flex items-center gap-2">
-        <span className="text-xs text-ink-2">Apply to {agentName}?</span>
+      <span className="inline-flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-ink">
+          Patch <span className="font-mono text-warn">{errorType}</span> on <span className="font-semibold">{agentName}</span>?
+        </span>
         <button
           onClick={apply}
-          className="text-xs px-2 py-0.5 bg-crit hover:opacity-90 text-white rounded font-semibold transition-opacity"
+          className="text-xs px-2.5 py-0.5 bg-crit hover:opacity-90 text-white rounded font-semibold transition-opacity"
         >
-          Confirm
+          Yes, patch it
         </button>
         <button
           onClick={() => setState('idle')}
@@ -96,7 +92,7 @@ export function ApplyFixButton({ agentId, agentName, errorType, description }: P
       disabled={state === 'applying'}
       className="inline-flex items-center gap-1 text-xs px-2.5 py-1 border border-accent-border text-accent bg-accent-bg hover:bg-accent rounded-md font-medium transition-colors disabled:opacity-50 hover:text-white"
     >
-      {state === 'applying' ? '⏳ Applying…' : `⚡ Fix ${agentName} only`}
+      {state === 'applying' ? '⏳ Applying…' : '⚡ Apply fix'}
     </button>
   );
 }

@@ -2,17 +2,20 @@
  * POST /api/agents/[agentId]/apply-fix
  *
  * Applies a Find→Replace patch to an agent's systemPrompt.
- * SAFETY GATE: Only NECTOR_DEMO_TEST (428d7591) is allowed. All production
- * agents are hard-blocked. This route explicitly breaks the read-only Ultravox
- * rule — authorized by operator for demo agent only.
+ * SAFETY GATE: Hard allowlist of known agent UUIDs. Auth-gated.
+ * All writes are manual — no auto-apply path. Operator must click Confirm.
+ *
+ * Pre-flight: verifyPatch() runs before any PATCH. If find text not in
+ * prompt → 409, nothing written.
  *
  * Flow:
  *   1. Auth check (Supabase session)
- *   2. Hard-block non-demo agents
+ *   2. Hard-block agents not in allowlist
  *   3. GET full agent from Ultravox (preserves all settings)
- *   4. Apply all patches for errorType
- *   5. PATCH back with full callTemplate, only systemPrompt changed
- *   6. Auto-log to prompt_fixes
+ *   4. Pre-flight: verify find text exists in current prompt
+ *   5. Apply all matching patches for errorType
+ *   6. PATCH back with full callTemplate, only systemPrompt changed
+ *   7. Auto-log to prompt_fixes + queue re-analysis of last 15 calls
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
@@ -21,10 +24,20 @@ import { FIX_SPECS, verifyPatch } from '@/lib/fix-specs';
 
 const ULTRAVOX_API = 'https://api.ultravox.ai/api';
 
-// HARD ALLOWLIST — never expand without explicit operator consent
+// HARD ALLOWLIST — all known Voxray agents (operator-approved 2026-05-24)
+// Only agents listed here can receive prompt patches. Expand only with operator consent.
 const ALLOWED_AGENTS: Record<string, string> = {
   '428d7591-3ba5-4b60-8aa5-a92012d12451': 'NECTOR Demo',
-  '0a5b5ccc-4f75-456c-94c8-f9e7293f9d81': 'Davansh_Investment_inbound',
+  '0a5b5ccc-4f75-456c-94c8-f9e7293f9d81': 'Davansh Investment',
+  '65ae3d7d-5a1f-4880-89f4-1ce690efae89': 'Sales AI',
+  '52db715f-fc68-4265-a354-7f64a27cd3b9': 'Debt Collector',
+  '4be98966-7c89-4149-8f10-e2ac16291f66': 'Debt Collection 2',
+  '74c435db-0382-45d4-8f84-65343c0dde5f': 'Cold Outreach AI',
+  'bfea3820-a447-4444-bd41-53ff919bbfe3': 'Edifice Properties',
+  '5da7bc3e-e653-4dd6-9402-bbe9b5b3a7b1': 'Ramco Gas',
+  'efecb97c-2937-4507-a550-8db5e8882c82': 'Real Estate AI',
+  '3983f5c0-4a95-42e3-a95a-9dbe57e11c78': 'Debt Follow-Up Bot',
+  '2dfe90c6-569f-49e0-84f4-e67d9e770255': 'Debt Welcome Bot',
 };
 
 export async function POST(
@@ -42,7 +55,7 @@ export async function POST(
   const agentName = ALLOWED_AGENTS[agentId];
   if (!agentName) {
     return NextResponse.json({
-      error: `Agent ${agentId} not in allowlist. Only NECTOR_DEMO_TEST is permitted for auto-fix.`,
+      error: `Agent ${agentId} not in allowlist. Add UUID to ALLOWED_AGENTS in apply-fix/route.ts.`,
     }, { status: 403 });
   }
 

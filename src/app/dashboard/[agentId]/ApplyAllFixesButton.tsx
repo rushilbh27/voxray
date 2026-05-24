@@ -2,11 +2,6 @@
 
 import { useState } from 'react';
 
-const ALLOWED_AGENT_IDS = [
-  '428d7591-3ba5-4b60-8aa5-a92012d12451', // NECTOR Demo
-  '0a5b5ccc-4f75-456c-94c8-f9e7293f9d81', // Davansh Investment
-];
-
 interface Props {
   agentId: string;
   agentName: string;
@@ -24,7 +19,6 @@ export function ApplyAllFixesButton({ agentId, agentName, errorTypes }: Props) {
   });
 
 
-  if (!ALLOWED_AGENT_IDS.includes(agentId)) return null;
   if (errorTypes.length === 0) return null;
 
   async function applyAll() {
@@ -96,13 +90,15 @@ export function ApplyAllFixesButton({ agentId, agentName, errorTypes }: Props) {
 
   if (state === 'confirming') {
     return (
-      <span className="inline-flex items-center gap-2">
-        <span className="text-xs text-ink-2">Apply {errorTypes.length} fixes to {agentName}?</span>
+      <span className="inline-flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-ink">
+          Patch <span className="font-semibold text-warn">{errorTypes.length} error type{errorTypes.length !== 1 ? 's' : ''}</span> on <span className="font-semibold">{agentName}</span>?
+        </span>
         <button
           onClick={applyAll}
-          className="text-xs px-2 py-0.5 bg-crit hover:opacity-90 text-white rounded font-semibold transition-opacity"
+          className="text-xs px-2.5 py-0.5 bg-crit hover:opacity-90 text-white rounded font-semibold transition-opacity"
         >
-          Confirm
+          Yes, patch all
         </button>
         <button
           onClick={() => setState('idle')}
