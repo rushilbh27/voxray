@@ -208,11 +208,8 @@ function CTASection() {
   useBatchReveal('[data-reveal="cta"]', ref);
 
   return (
-    <section ref={ref} className="border-b border-border/60 bg-surface relative overflow-hidden">
-      {/* Subtle ambient glow */}
-      <div className="glow-bg" aria-hidden />
-
-      <div className="relative max-w-5xl mx-auto px-8 md:px-12 py-24">
+    <section ref={ref} className="border-b border-border/60 bg-canvas">
+      <div className="max-w-5xl mx-auto px-8 md:px-12 py-24">
         <div
           data-reveal="cta"
           className="flex flex-col md:flex-row md:items-end md:justify-between gap-10"

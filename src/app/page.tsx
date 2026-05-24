@@ -57,28 +57,17 @@ export default function HomePage() {
           </div>
 
           {/* Nav links */}
-          <nav className="flex items-center gap-1">
-            <Link
-              href="/dashboard"
-              className="px-3 py-1.5 text-[11px] font-medium text-ink-2 hover:text-ink transition-colors"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/errors"
-              className="px-3 py-1.5 text-[11px] font-medium text-ink-2 hover:text-ink transition-colors"
-            >
-              Errors
-            </Link>
+          <nav className="flex items-center gap-2">
             <Link
               href="/docs"
-              className="px-3 py-1.5 text-[11px] font-medium text-ink-2 hover:text-ink transition-colors"
+              className="inline-flex items-center justify-center px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] transition-colors border border-border text-ink-2 hover:text-ink hover:border-border-strong"
+              style={{ fontFamily: 'var(--font-mono)' }}
             >
               Docs
             </Link>
             <Link
               href="/dashboard"
-              className="ml-2 inline-flex items-center justify-center px-4 py-1.5 bg-accent hover:bg-accent-hover text-canvas text-[11px] font-bold uppercase tracking-[0.1em] transition-colors border border-accent-border"
+              className="inline-flex items-center justify-center px-4 py-1.5 bg-accent hover:bg-accent-hover text-canvas text-[11px] font-bold uppercase tracking-[0.1em] transition-colors border border-accent-border"
               style={{ fontFamily: 'var(--font-mono)' }}
             >
               Open dashboard

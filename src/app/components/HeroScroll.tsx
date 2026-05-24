@@ -163,7 +163,8 @@ export function HeroScroll({ src, scrollHeight = '400vh', phases }: Props) {
                 <div className="mt-9">
                   <Link
                     href={phase.cta.href}
-                    className="inline-flex items-center gap-2.5 px-6 py-3 bg-accent hover:bg-accent-hover text-canvas text-sm font-bold rounded-lg transition-colors"
+                    className="inline-flex items-center gap-2.5 px-6 py-3 bg-accent hover:bg-accent-hover text-canvas text-[13px] font-bold uppercase tracking-[0.08em] transition-colors border border-accent-border"
+                    style={{ fontFamily: 'var(--font-mono)' }}
                   >
                     {phase.cta.label}
                     <span aria-hidden="true">→</span>

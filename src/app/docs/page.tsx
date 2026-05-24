@@ -26,11 +26,11 @@ function P({ children }: { children: React.ReactNode }) {
   return <p className="text-[15px] text-ink-2 leading-relaxed mb-4">{children}</p>;
 }
 function Code({ children }: { children: React.ReactNode }) {
-  return <code className="font-mono text-[13px] bg-surface-2 text-accent px-1.5 py-0.5 rounded">{children}</code>;
+  return <code className="font-mono text-[13px] bg-surface-2 text-accent px-1.5 py-0.5">{children}</code>;
 }
 function Pre({ children }: { children: React.ReactNode }) {
   return (
-    <pre className="text-[13px] font-mono bg-surface-2 border border-border-subtle rounded-xl px-4 py-3.5 overflow-x-auto text-ink-2 mb-4 leading-relaxed whitespace-pre">
+    <pre className="text-[13px] font-mono bg-surface-2 border border-border-subtle px-4 py-3.5 overflow-x-auto text-ink-2 mb-4 leading-relaxed whitespace-pre">
       {children}
     </pre>
   );
@@ -57,13 +57,13 @@ function Badge({ children, tone = 'default' }: { children: React.ReactNode; tone
     ok:   'bg-ok-bg text-ok border-ok-border',
     default: 'bg-surface-2 text-ink-3 border-border-subtle',
   }[tone];
-  return <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${cls}`}>{children}</span>;
+  return <span className={`inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold border ${cls}`}>{children}</span>;
 }
 function Callout({ children, tone = 'default' }: { children: React.ReactNode; tone?: 'warn' | 'crit' | 'default' }) {
   const cls = tone === 'crit' ? 'border-crit-border bg-crit-bg text-crit'
     : tone === 'warn' ? 'border-warn-border bg-warn-bg text-warn'
     : 'border-border-subtle bg-surface-2 text-ink-2';
-  return <div className={`border rounded-xl px-4 py-3 text-[13px] leading-relaxed mb-4 ${cls}`}>{children}</div>;
+  return <div className={`border px-4 py-3 text-[13px] leading-relaxed mb-4 ${cls}`}>{children}</div>;
 }
 
 // ── sidebar nav ────────────────────────────────────────────────────────────
@@ -107,13 +107,14 @@ export default function DocsPage() {
       {/* ── Top nav ──────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 h-12 border-b border-border-subtle bg-canvas/90 backdrop-blur-md flex items-center px-6 gap-6">
         <Link href="/" className="flex items-center gap-2.5 shrink-0">
-          <span className="h-6 w-6 rounded-sm bg-accent flex items-center justify-center text-canvas font-black text-[11px]">V</span>
+          <span className="h-6 w-6 bg-accent flex items-center justify-center text-canvas font-black text-[11px]">V</span>
           <span className="text-[13px] font-semibold text-ink">Voxray</span>
         </Link>
         <span className="h-4 w-px bg-border-subtle" />
         <span className="text-[12px] text-ink-3 font-medium">Documentation</span>
         <div className="ml-auto flex items-center gap-4">
-          <Link href="/dashboard" className="text-[12px] text-ink-3 hover:text-ink transition-colors">Dashboard →</Link>
+          <Link href="/" className="text-[12px] text-ink-3 hover:text-ink transition-colors font-[family-name:var(--font-mono)]">← Home</Link>
+          <Link href="/dashboard" className="text-[12px] text-ink-3 hover:text-ink transition-colors font-[family-name:var(--font-mono)]">Dashboard →</Link>
         </div>
       </header>
 
@@ -157,7 +158,7 @@ export default function DocsPage() {
                 { n: '55%',    l: 'error rate detected' },
                 { n: '<3s',    l: 'webhook latency' },
               ].map(({ n, l }) => (
-                <div key={l} className="rounded-xl border border-border-subtle bg-surface p-4">
+                <div key={l} className="border border-border-subtle bg-surface p-4">
                   <div className="text-[22px] font-black nums text-accent">{n}</div>
                   <div className="text-[11px] text-ink-3 mt-0.5">{l}</div>
                 </div>
