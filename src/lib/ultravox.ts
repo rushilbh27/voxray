@@ -144,6 +144,22 @@ export interface UltravoxAgent {
   [key: string]: unknown;
 }
 
+export async function fetchAgents(): Promise<UltravoxAgent[]> {
+  const all: UltravoxAgent[] = [];
+  let url: string | null = `${ULTRAVOX_API_URL}/agents?limit=100`;
+  while (url) {
+    const res: Response = await fetch(url, { headers: headers(), cache: 'no-store' });
+    if (!res.ok) break;
+    const data = await res.json();
+    for (const a of data.results ?? []) {
+      const prompt = a?.callTemplate?.systemPrompt ?? a?.systemPrompt ?? null;
+      all.push({ ...a, systemPrompt: prompt });
+    }
+    url = data.next as string | null;
+  }
+  return all;
+}
+
 export async function fetchAgent(agentId: string): Promise<UltravoxAgent | null> {
   try {
     const res = await fetch(`${ULTRAVOX_API_URL}/agents/${agentId}`, {

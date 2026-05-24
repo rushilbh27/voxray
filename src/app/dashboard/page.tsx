@@ -59,6 +59,7 @@ export default async function Dashboard({
     { data: costRaw },
     activeAlerts,
     { data: calls, count: filteredTotal },
+    liveAgents,
   ] = await Promise.all([
     supabaseAdmin.rpc('get_dashboard_aggregates'),
     supabaseAdmin.rpc('get_client_breakdown'),
@@ -79,6 +80,7 @@ export default async function Dashboard({
       .gte('created_at', thirtyDaysAgo),
     import('@/lib/alert-engine').then((m) => m.runAlertCheck()).catch(() => [] as import('@/lib/alert-engine').FiredAlert[]),
     callLogQuery,
+    import('@/lib/ultravox').then((m) => m.fetchAgents()).catch(() => [] as import('@/lib/ultravox').UltravoxAgent[]),
   ]);
 
   // ── Stat strip ──────────────────────────────────────────────────────────────
@@ -174,6 +176,29 @@ export default async function Dashboard({
   const filteredSummaries = agentSummaries.filter((s) => !EXCLUDED_CLIENTS.has(s.client_name));
   agentSummaries.length = 0;
   agentSummaries.push(...filteredSummaries);
+  // ── Merge live Ultravox agents (including zero-call new agents) ────────────
+  const existingNames = new Set(agentSummaries.map((s) => s.client_name));
+  for (const agent of liveAgents) {
+    const name = agent.name ?? agent.agentId;
+    if (!name || EXCLUDED_CLIENTS.has(name) || existingNames.has(name)) continue;
+    // Try to match by agentId in the knownAgents map
+    const knownName = Object.entries(KNOWN_AGENT_IDS).find(([, id]) => id === agent.agentId)?.[0];
+    const displayName = DISPLAY_NAMES[name] ?? knownName ?? name;
+    if (EXCLUDED_CLIENTS.has(displayName) || existingNames.has(displayName)) continue;
+    existingNames.add(displayName);
+    agentSummaries.push({
+      client_name:       displayName,
+      total_calls:       0,
+      analyzed_calls:    0,
+      calls_with_errors: 0,
+      error_rate:        0,
+      critical_count:    0,
+      top_error_type:    null,
+    });
+    // Store agentId for link routing
+    agentIdMap.set(displayName, agent.agentId);
+  }
+
   agentSummaries.sort((a, b) => b.total_calls - a.total_calls || b.error_rate - a.error_rate);
 
   const clients = (clientRows as Array<Record<string, unknown>> ?? []).map(
