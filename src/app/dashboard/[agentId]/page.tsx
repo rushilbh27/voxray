@@ -247,19 +247,19 @@ export default async function AgentProfilePage({
     <div className="min-h-screen bg-canvas">
       <Nav activeCalls={0} />
 
-      <main className="max-w-7xl mx-auto px-6 pb-16">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pb-16">
         <LiveTracker />
         {/* Breadcrumb + header */}
         <div className="py-6 border-b border-border mb-8">
           <Link href="/dashboard" className="text-xs text-ink-3 hover:text-accent transition-colors">
             ← Back to Dashboard
           </Link>
-          <div className="flex items-center justify-between mt-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
             <div>
-              <h1 className="text-3xl font-black text-ink leading-none">{clientName}</h1>
-              <div className="text-xs font-mono text-ink-3 mt-1">{agentId}</div>
+              <h1 className="text-2xl sm:text-3xl font-black text-ink leading-none">{clientName}</h1>
+              <div className="text-xs font-mono text-ink-3 mt-1 break-all sm:break-normal">{agentId}</div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <ReanalyzeButton agentId={agentId} limit={30} />
               {isAllowlisted && fixableErrors.length > 0 && (
                 <ApplyAllFixesButton
@@ -300,16 +300,16 @@ export default async function AgentProfilePage({
 
         {/* Error Intelligence */}
         <section className="mb-10">
-          <div className="flex items-end justify-between gap-4 mb-5">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
             <div>
               <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Error Intelligence</div>
-              <h2 className="text-2xl font-black text-ink leading-none">
+              <h2 className="text-xl sm:text-2xl font-black text-ink leading-none">
                 {topErrors.length} <span className="font-normal text-ink-3 text-lg">error type{topErrors.length !== 1 ? 's' : ''}</span>
                 <span className="text-ink-3 font-normal text-sm ml-3">{callsWithErrors} calls affected</span>
               </h2>
             </div>
             {isAllowlisted && (
-              <span className="text-xs px-2.5 py-1 bg-accent-bg text-accent border border-accent-border rounded-md font-medium">
+              <span className="text-xs px-2.5 py-1 bg-accent-bg text-accent border border-accent-border rounded-md font-medium self-start sm:self-auto">
                 Auto-fix enabled
               </span>
             )}
@@ -525,7 +525,7 @@ export default async function AgentProfilePage({
         <section className="mb-10">
           <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Call Outcome Trend · 12 Weeks</div>
           <div className="bg-surface border border-border rounded-xl p-5">
-            <div className="mb-4 flex items-start justify-between gap-4">
+            <div className="mb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold text-ink">Success rate over time · {clientName}</h2>
                 <p className="text-xs text-ink-3 mt-0.5">Success rate drops here signal problems before error count spikes.</p>
@@ -539,7 +539,7 @@ export default async function AgentProfilePage({
         <section className="mb-10">
           <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Before / After Fix Comparison</div>
           <div className="bg-surface border border-border rounded-xl p-5">
-            <div className="flex items-center justify-between gap-4 mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <div>
                 <h2 className="text-sm font-semibold text-ink">Error rate change after a prompt fix</h2>
                 <p className="text-xs text-ink-3 mt-0.5">Pick the date you applied a fix to see before/after error counts.</p>

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { CallError, ErrorAnalysis } from '@/lib/error-analyzer';
 import AnalyzeButton from './AnalyzeButton';
+import { TranscriptMessage } from './TranscriptMessage';
 import { Nav } from '@/app/components/Nav';
 
 export const revalidate = 60;
@@ -52,7 +53,7 @@ export default async function CallDetailPage({ params }: Props) {
     <div className="min-h-screen bg-canvas">
       <Nav />
 
-      <main className="max-w-6xl mx-auto px-6 pb-16">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
         {/* Breadcrumb */}
         <div className="py-4 mb-2">
           <Link href="/dashboard" className="text-xs text-ink-3 hover:text-accent transition-colors">
@@ -131,25 +132,13 @@ export default async function CallDetailPage({ params }: Props) {
 
                   return (
                     <div key={msg.id}>
-                      <div className={`flex gap-2.5 ${isAgent ? '' : 'flex-row-reverse'}`}>
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 ${
-                          isTool ? 'bg-warn-bg text-warn border border-warn-border'
-                            : isAgent ? 'bg-accent-bg text-accent border border-accent-border'
-                            : 'bg-surface-2 text-ink-2 border border-border'
-                        }`}>
-                          {isTool ? '⚙' : isAgent ? 'A' : 'U'}
-                        </div>
-                        <div className={`max-w-[78%] px-3.5 py-2 rounded-xl text-sm leading-relaxed ${
-                          hasCrit ? 'bg-crit-bg text-ink border border-crit-border'
-                            : hasErr ? 'bg-warn-bg text-ink border border-warn-border'
-                            : isTool ? 'bg-warn-bg text-warn-700 font-mono text-xs border border-warn-border'
-                            : isAgent ? 'bg-accent-bg text-ink border border-accent-border'
-                            : 'bg-surface-2 text-ink border border-border'
-                        }`}>
-                          {isTool && <div className="text-[10px] text-warn mb-1 uppercase tracking-wide font-sans font-semibold">Tool</div>}
-                          {msg.text}
-                        </div>
-                      </div>
+                      <TranscriptMessage
+                        text={msg.text ?? ''}
+                        isAgent={isAgent}
+                        isTool={isTool}
+                        hasCrit={hasCrit}
+                        hasErr={hasErr}
+                      />
                       {msgErrors.length > 0 && (
                         <div className={`mt-1 space-y-1 ${isAgent ? 'ml-[34px]' : 'mr-[34px]'}`}>
                           {msgErrors.map((err, ei) => (
