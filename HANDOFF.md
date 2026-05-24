@@ -235,14 +235,25 @@ All major agents now have verified fix-spec patches. See agent table above.
 
 ---
 
-## NEXT SESSION: UI/UX Final Pass (session 6)
+## ✅ COMPLETED: Homepage Redesign + Dashboard Fix (session 6, commit `c363082`)
 
-**Goal:** Final polish on remaining rough edges.
+**What was built:**
+- `HeroScroll.tsx` — GSAP scroll-scrubbed video hero, 3 copy phases tied to scroll position
+- `HomeSections.tsx` — full below-fold (434 lines): stats bar, benefits grid (Catch/Fix/Prove), how-it-works (01/02/03), CTA strip. GSAP batch reveal on scroll.
+- `page.tsx` — sharp industrial navbar (no rounded corners, border edge). HomeSections extracted.
+- Dashboard: sparkline SVG overlapping critical badge fixed on agent cards.
+- `tsconfig.json` — excluded `skills/` + `dom.html`.
+
+---
+
+## NEXT SESSION: UI/UX Final Pass (session 7)
+
+**Goal:** Polish remaining rough edges in dashboard/agent profile views.
 
 **In scope:**
-1. **Call detail transcript** — wall-of-text; consider collapsing long messages, better visual rhythm between turns
+1. **Call detail transcript** — wall-of-text; collapsing long messages, role-color improvement, visual rhythm between turns
 2. **Agent profile loading skeleton** — doesn't reflect heatmap/outcome/compare below fold
-3. **Mobile audit** — error leaderboard + worst calls stacked, spacing pass
+3. **Mobile audit** — error leaderboard + worst calls panel on agent profile; spacing pass
 
 **Known issues still open:**
 - Shell Gas Uganda client_name mismatch (see PROJECT_STATUS)

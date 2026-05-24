@@ -1,6 +1,6 @@
 # Voxray — Project Status Report
 
-> Last updated: 2026-05-23 (session 5 — dark theme completion: FixBlock, AnalyzeButton, OutcomeChart, ErrorHeatmap, loading skeleton, mobile)  
+> Last updated: 2026-05-24 (session 6 — homepage redesign: GSAP scroll-scrubbed video hero + below-fold SaaS sections + dashboard sparkline/badge fix)  
 > Update this file every session. Not a handoff bridge — a permanent record of what was built, where we stand, and where we're going.
 
 ---
@@ -247,6 +247,23 @@ Key commit: `e0ccdc6`
 
 **Call detail page:** Breadcrumb fixed — was `href="/"` (broken), now `href="/dashboard"`.
 
+### Phase 13 — Homepage Redesign + Dashboard Bug Fix (session 6)
+Key commit: `c363082`
+
+**Homepage (`page.tsx` + `HomeSections.tsx` + `HeroScroll.tsx`):**
+- Navbar: sharp industrial style — no rounded corners, tight tracking, monospace accents, `border-b border-border` edge
+- `HomeSections.tsx` (434 lines, new file) — full below-fold:
+  - Stats bar: 1808+ calls · 52% error rate · <3s latency · 21 error types (GSAP scroll batch reveal)
+  - Benefits grid: Catch / Fix / Prove — 3-column with icon, proof line, GSAP entrance
+  - How It Works: 3 numbered panels (01/02/03)
+  - Footer CTA strip
+- `page.tsx` simplified: logic extracted into HomeSections, hero phases unchanged
+- `tsconfig.json`: `skills/` and `dom.html` excluded (were being scanned by TS, causing noise)
+
+**Dashboard fix (`dashboard/page.tsx`):**
+- Sparkline SVG was overlapping critical badge on agent cards — z-index + layout fix
+- `Pill` component placement adjusted so badge renders above sparkline layer
+
 ### Phase 8 — Transcript Examples on Agent Profile (`cc21216`)
 - `example_line` (`agent_line` from `call_errors` JSONB) was fetched but never rendered
 - Added "Agent said" block inline on each error row
@@ -394,6 +411,9 @@ Each error type has patches (find→replace strings). On the agent profile page,
 | `src/app/api/webhook/call-ended/route.ts` | Real-time webhook: ACK → background pipeline |
 | `src/app/api/agents/[agentId]/apply-fix/route.ts` | Apply fix (NECTOR Demo only, pre-flight verify) |
 | `src/app/api/cron/route.ts` | Daily: 30 calls + sync + alerts |
+| `src/app/page.tsx` | Public homepage (hero phases, floating nav) |
+| `src/app/components/HeroScroll.tsx` | Scroll-scrubbed video hero (GSAP ScrollTrigger) |
+| `src/app/components/HomeSections.tsx` | Below-fold: stats bar, benefits, how-it-works, CTA |
 | `src/app/components/FixBlock.tsx` | Find/replace UI with copy buttons |
 | `src/app/components/TrendChart.tsx` | 12-week error rate chart |
 | `src/app/components/ApplyFixButton.tsx` | One-click apply (NECTOR Demo + Davansh) |
@@ -409,17 +429,22 @@ Each error type has patches (find→replace strings). On the agent profile page,
 
 ## What's Left — Prioritized
 
-### Next up: UI/UX pass — final pieces (session 6)
-Core dark theme done. Remaining:
+### ✅ Done: Homepage redesign (session 6)
+- GSAP scroll-scrubbed video hero (HeroScroll)
+- Below-fold SaaS sections (HomeSections): stats bar, benefits, how-it-works, CTA
+- Sharp industrial navbar (no rounded corners, tight tracking)
+- Dashboard sparkline/badge overlap fixed
 
-- [ ] **Call detail transcript readability** — messages run as a wall; consider collapsing long messages, role-color improvement, better visual rhythm between turns
-- [ ] **Agent profile loading skeleton** — current skeleton doesn't reflect heatmap/outcome/compare sections below fold
-- [ ] **Mobile** — deeper responsive audit on agent profile (stat strip 2-col fine, but error leaderboard + worst calls panel stacked may need spacing pass)
+### Next up: UI/UX final pass — remaining rough edges (session 7)
+
+- [ ] **Call detail transcript readability** — wall of text; collapsing long messages, role-color improvement, visual rhythm between turns
+- [ ] **Agent profile loading skeleton** — doesn't cover heatmap/outcome/compare sections below fold
+- [ ] **Mobile audit** — error leaderboard + worst calls panel on agent profile; spacing pass
 
 ### Medium priority
-- [ ] **Shell Gas Uganda agent profile** — `client_name` is "Shell Gas Uganda" in DB but agent name at Ultravox is "Ramco_Gas_inbound". Heatmap/outcome data works. Fix-specs may not match since patches reference "Ramco Gas" client_name.
-- [ ] **Real Estate AI + NECTOR Demo patch verification** — patches written, need live confirmation `verifyPatch()` finds them (run profile pages and check line numbers)
-- [ ] **Expand auto-apply allowlist** — currently NECTOR Demo + Davansh. When FP rate < 5% on any production agent error type, consider adding.
+- [ ] **Shell Gas Uganda agent profile** — `client_name` is "Shell Gas Uganda" in DB, agent name is "Ramco_Gas_inbound". Heatmap/outcome data works. Fix-specs may not match (patches reference "Ramco Gas").
+- [ ] **Real Estate AI + NECTOR Demo patch verification** — patches written, need live confirmation `verifyPatch()` returns line numbers (run profile pages)
+- [ ] **Expand auto-apply allowlist** — NECTOR Demo + Davansh only. Add agents when FP rate < 5%.
 
 ### Low priority
 - [ ] **Call recordings** — `GET /api/calls/{id}/recording` available, not exposed in UI
