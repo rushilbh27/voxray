@@ -1,6 +1,6 @@
 # Voxray — Project Status Report
 
-> Last updated: 2026-05-24 (session 7 — transcript collapse, skeleton, mobile, display names, call recordings, README, all-agent patch allowlist, manual-only)  
+> Last updated: 2026-05-25 (session 8 — cost dashboard, inbound AgentType, wrong_company_name detection, patch verification)  
 > Update this file every session. Not a handoff bridge — a permanent record of what was built, where we stand, and where we're going.
 
 ---
@@ -304,6 +304,30 @@ Key commits: `4086557`, `c48e7c0`, `d79126f`
 - `example_line` (`agent_line` from `call_errors` JSONB) was fetched but never rendered
 - Added "Agent said" block inline on each error row
 
+### Phase 15 — Cost Dashboard + Inbound AgentType + New Error Detection (session 8)
+Key commit: `8e99f2d`
+
+**Patch verification:**
+- Real Estate AI (`efecb97c`): all 3 patches verified against live prompt ✅
+- NECTOR Demo (`428d7591`): `stacked_questions` find text gone → patch was already applied ✅. Other 3 verified ✅.
+
+**Cost & Usage dashboard (`CostBreakdown.tsx`):**
+- New server component — no `use client`, no Recharts. Pure CSS horizontal bars.
+- Summary tiles: Today / This week / All time cost
+- Per-agent-type bars: Sales AI / Debt Collector / Cold Outreach with $X.XX labels + call count
+- Avg cost per analysis + total analyses header stat
+- Added `llm_traces` cost query to dashboard `Promise.all` — 30-day window
+- Renders below PipelineStrip on `/dashboard`
+- Live data: ~$0.29–$0.48/day, $1.03 all-time across 137 costed traces
+
+**New error types + inbound AgentType:**
+- Analyzed 400 recent calls — found 50 `wrong_call_type` flags, all Shell Gas Uganda FPs
+- Root cause: Shell Gas Uganda has 0 agent_ids in DB → always used static Sales AI rules → sales rules flag inbound behavior as `wrong_call_type`
+- Fix: added `'inbound'` to `AgentType` union. `detectAgentType()` now maps Shell Gas/Ramco/Edifice/Davansh/NECTOR/UCC → `'inbound'`
+- New inbound rules section: `wrong_company_name` (CRITICAL), `wrong_agent_name` (CRITICAL), `stacked_questions`, `no_save_answers`, `broke_promise`, `wrong_info`, `accepted_garbled_audio`. Does NOT flag `wrong_call_type` for inbound behavior.
+- Real finding: NECTOR Demo was saying "Shell Gas Uganda" + "Susan" instead of configured company/agent name — now tracked as `wrong_company_name` / `wrong_agent_name`
+- Same `inbound` rules added to `audio-analyzer.ts` (Llama path)
+
 ---
 
 ## Current State — What Works Right Now
@@ -477,9 +501,21 @@ Each error type has patches (find→replace strings). On the agent profile page,
 - README full rewrite
 - apply-fix expanded to all 11 agents, manual-only, auto-apply killed
 
+### ✅ Done: Cost dashboard + inbound agent type + error detection (session 8)
+- CostBreakdown.tsx on main dashboard
+- inbound AgentType fixes 50+ wrong_call_type FPs for Shell Gas Uganda
+- wrong_company_name / wrong_agent_name detection added
+
+### ✅ Done: Patch verification (session 8)
+- Real Estate AI: all 3 patches verified ✅
+- NECTOR Demo: stacked_questions already applied, other 3 verified ✅
+
 ### Remaining (not blockers)
-- [ ] **Real Estate AI + NECTOR Demo patch verification** — open `/dashboard/efecb97c` and `/dashboard/428d7591` on prod, confirm green "✓ find text verified" badges. If any missing, update find string in fix-specs.ts.
-- [ ] **Next feature TBD** — see HANDOFF.md
+- [ ] **Re-analyze Shell Gas Uganda** — hit Reanalyze on `/dashboard/5da7bc3e` to clear existing wrong_call_type FPs with new inbound rules
+- [ ] **Populate agent_id for Shell Gas Uganda** — calls have agent_id=null, preventing live prompt fetch
+- [ ] **Multi-agent diff view** — compare two agents side-by-side
+- [ ] **Email digest** — weekly error summary, Supabase edge function
+- [ ] **Cost trend chart** — daily cost over time (currently only summary tiles; 3+ days data needed)
 
 ---
 

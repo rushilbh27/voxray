@@ -261,19 +261,30 @@ All major agents now have verified fix-spec patches. See agent table above.
 
 ---
 
-## NEXT SESSION: session 8
+## ✅ COMPLETED: Cost Dashboard + Inbound AgentType + Error Detection (session 8, commit `8e99f2d`)
+
+**What was built:**
+- Patch verification: Real Estate AI all 3 ✅, NECTOR Demo stacked_questions already applied ✅
+- `CostBreakdown.tsx` — server component on `/dashboard`: today/week/all-time cost tiles + CSS horizontal bars per agent type
+- `dashboard/page.tsx` — `llm_traces` cost query in Promise.all, computes cost buckets, renders CostBreakdown below PipelineStrip
+- `error-analyzer.ts` — added `'inbound'` AgentType; `detectAgentType()` now maps Shell Gas/Ramco/Edifice/Davansh/NECTOR/UCC → `'inbound'` (fixes ~50 `wrong_call_type` FPs per 400 calls)
+- `error-analyzer.ts` — inbound rules: `wrong_company_name` (CRITICAL), `wrong_agent_name` (CRITICAL), does NOT flag inbound behavior as wrong_call_type
+- `audio-analyzer.ts` — same inbound AgentType + rules on Llama path
+
+---
+
+## NEXT SESSION: session 9
 
 **First thing to do:**
-- Visit `/dashboard/efecb97c` (Real Estate AI) and `/dashboard/428d7591` (NECTOR Demo) on prod
-- Confirm green "✓ find text verified" badges appear for all patches
-- If any missing → find string in `fix-specs.ts` needs updating
+- Verify `/dashboard` on prod shows Cost & Usage strip with dollar values
+- Optional: hit Reanalyze on `/dashboard/5da7bc3e` (Ramco Gas) to clear existing wrong_call_type FPs
 
 **Ideas for next work:**
-- New error types if Uganda agents developing new failure patterns
 - Multi-agent diff view (compare two agents side-by-side)
 - Email digest (weekly error summary, Supabase edge function)
-- Cost tracking dashboard (per-agent Haiku spend over time)
+- Cost trend chart (daily cost over time — need 7+ days data to be useful)
+- Populate agent_id for Shell Gas Uganda calls (currently 0/56 have agent_id → live prompt never fetched)
 
 **Known issues:**
-- Real Estate AI + NECTOR Demo patch verification (unconfirmed, see above)
+- Shell Gas Uganda calls have no agent_id in DB → analyzed with static inbound rules (not live prompt). Low priority — inbound rules are now correct.
 - Next.js workspace root warning (cosmetic, `turbopack.root` in next.config.ts silences it)
