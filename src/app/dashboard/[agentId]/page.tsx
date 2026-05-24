@@ -33,6 +33,22 @@ const ALLOWED_AGENT_IDS = [
   '0a5b5ccc-4f75-456c-94c8-f9e7293f9d81', // Davansh Investment
 ];
 
+// DB client_name → human display name (some agents have inconsistent raw names)
+const DISPLAY_NAMES: Record<string, string> = {
+  'Sales_AI':                         'Sales AI',
+  'Debt-Collector-Agent-UG':          'Debt Collector',
+  'Debt_Collection_2':                'Debt Collection 2',
+  'Cold_Outreach_AI':                 'Cold Outreach AI',
+  'NECTOR_DEMO_TEST':                 'NECTOR Demo',
+  'Davansh_Investment_inbound':       'Davansh Investment',
+  'Edifice_Properties_inbound':       'Edifice Properties',
+  'Shell Gas Uganda':                 'Ramco Gas',
+  'Ramco_Gas_inbound':                'Ramco Gas',
+  'Real_Estate_AI_Sales_Agent':       'Real Estate AI',
+  'Follow_Up_Debt_Collection_Bot':    'Debt Follow-Up Bot',
+  'Debt_Collection_Welcome-Bot':      'Debt Welcome Bot',
+};
+
 const HUMAN_LABELS: Record<string, string> = {
   accepted_unknown_location: 'Accepted unrecognizable area name',
   accepted_garbled_audio:   'Accepted unclear audio as valid answer',
@@ -81,6 +97,7 @@ export default async function AgentProfilePage({
     .single();
 
   const clientName = nameRow?.client_name ?? 'Unknown Agent';
+  const displayName = DISPLAY_NAMES[clientName] ?? clientName;
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const twelveWeeksAgo = new Date(Date.now() - 84 * 24 * 60 * 60 * 1000).toISOString();
@@ -256,7 +273,7 @@ export default async function AgentProfilePage({
           </Link>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-ink leading-none">{clientName}</h1>
+              <h1 className="text-2xl sm:text-3xl font-black text-ink leading-none">{displayName}</h1>
               <div className="text-xs font-mono text-ink-3 mt-1 break-all sm:break-normal">{agentId}</div>
             </div>
             <div className="flex items-center gap-3 shrink-0">
@@ -264,7 +281,7 @@ export default async function AgentProfilePage({
               {isAllowlisted && fixableErrors.length > 0 && (
                 <ApplyAllFixesButton
                   agentId={agentId}
-                  agentName={clientName}
+                  agentName={displayName}
                   errorTypes={fixableErrors}
                 />
               )}
@@ -326,7 +343,7 @@ export default async function AgentProfilePage({
               {/* Error leaderboard with per-agent verified patches */}
               <div className="bg-surface border border-border rounded-xl overflow-hidden">
                 <div className="px-5 py-3.5 border-b border-border-subtle flex items-center justify-between">
-                  <span className="text-xs font-semibold text-ink-2 uppercase tracking-wide">Errors for {clientName}</span>
+                  <span className="text-xs font-semibold text-ink-2 uppercase tracking-wide">Errors for {displayName}</span>
                 </div>
                 <div className="divide-y divide-border-subtle">
                   {topErrors.slice(0, 15).map((err, i) => {
@@ -419,11 +436,11 @@ export default async function AgentProfilePage({
                                 <Link href={`/calls/${err.example_call}`} className="text-xs text-accent hover:underline">
                                   full call →
                                 </Link>
-                                <LogFixButton agentName={clientName} errorType={err.type} />
+                                <LogFixButton agentName={displayName} errorType={err.type} />
                                 {canApply && (
                                   <ApplyFixButton
                                     agentId={agentId}
-                                    agentName={clientName}
+                                    agentName={displayName}
                                     errorType={err.type}
                                     description={`Agent profile apply: ${err.type}`}
                                   />
@@ -507,7 +524,7 @@ export default async function AgentProfilePage({
           <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">Error Heatmap · Last 30 Days</div>
           <div className="bg-surface border border-border rounded-xl p-5">
             <div className="mb-4">
-              <h2 className="text-sm font-semibold text-ink">Which days errors fired · {clientName}</h2>
+              <h2 className="text-sm font-semibold text-ink">Which days errors fired · {displayName}</h2>
               <p className="text-xs text-ink-3 mt-0.5">Each square = one day. Darker = more calls with that error. Patterns reveal systematic issues.</p>
             </div>
             {heatmapRows.length > 0 ? (
@@ -527,7 +544,7 @@ export default async function AgentProfilePage({
           <div className="bg-surface border border-border rounded-xl p-5">
             <div className="mb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold text-ink">Success rate over time · {clientName}</h2>
+                <h2 className="text-sm font-semibold text-ink">Success rate over time · {displayName}</h2>
                 <p className="text-xs text-ink-3 mt-0.5">Success rate drops here signal problems before error count spikes.</p>
               </div>
             </div>
@@ -593,7 +610,7 @@ export default async function AgentProfilePage({
                 <h2 className="text-sm font-semibold text-ink">Error rate by prompt version · {clientName}</h2>
                 <p className="text-xs text-ink-3 mt-0.5">Each bar = one distinct prompt hash. Most recent = rightmost.</p>
               </div>
-              <PromptVersionChart data={promptVersionData} agent={clientName} />
+              <PromptVersionChart data={promptVersionData} agent={displayName} />
             </div>
           </section>
         )}
@@ -602,7 +619,7 @@ export default async function AgentProfilePage({
         {prompt && (
           <section className="mb-10">
             <div className="text-[11px] font-semibold text-ink-3 uppercase tracking-widest mb-1.5">System Prompt</div>
-            <PromptViewer prompt={prompt} agentName={clientName} />
+            <PromptViewer prompt={prompt} agentName={displayName} />
           </section>
         )}
       </main>

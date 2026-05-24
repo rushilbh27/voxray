@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import type { CallError, ErrorAnalysis } from '@/lib/error-analyzer';
 import AnalyzeButton from './AnalyzeButton';
 import { TranscriptMessage } from './TranscriptMessage';
+import { fetchCallRecordingUrl } from '@/lib/ultravox';
 import { Nav } from '@/app/components/Nav';
 
 export const revalidate = 60;
@@ -15,9 +16,10 @@ interface Props {
 export default async function CallDetailPage({ params }: Props) {
   const { id } = await params;
 
-  const [{ data: call }, { data: messages }] = await Promise.all([
+  const [{ data: call }, { data: messages }, recordingUrl] = await Promise.all([
     supabaseAdmin.from('ultravox_calls').select('*').eq('call_id', id).single(),
     supabaseAdmin.from('ultravox_messages').select('*').eq('call_id', id).order('ordinal' as never, { ascending: true }),
+    fetchCallRecordingUrl(id),
   ]);
 
   if (!call) notFound();
@@ -162,6 +164,25 @@ export default async function CallDetailPage({ params }: Props) {
 
           {/* ── RIGHT COLUMN ──────────────────────────────────────────────────────── */}
           <div className="space-y-5">
+
+            {/* Recording */}
+            {recordingUrl && (
+              <div className="bg-surface border border-border rounded-xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-border-subtle flex items-center gap-2">
+                  <span className="text-xs font-semibold text-ink-2 uppercase tracking-wide">Recording</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-ok animate-pulse" />
+                </div>
+                <div className="px-5 py-4">
+                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  <audio
+                    controls
+                    src={recordingUrl}
+                    className="w-full h-9 accent-[oklch(var(--color-accent))]"
+                    style={{ colorScheme: 'dark' }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Error Analysis */}
             <div className="bg-surface border border-border rounded-xl overflow-hidden">
