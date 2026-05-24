@@ -1,6 +1,6 @@
 # Voxray — Project Status Report
 
-> Last updated: 2026-05-24 (session 6 — homepage redesign: GSAP scroll-scrubbed video hero + below-fold SaaS sections + dashboard sparkline/badge fix)  
+> Last updated: 2026-05-24 (session 7 — transcript collapse, skeleton, mobile, display names, call recordings, README, all-agent patch allowlist, manual-only)  
 > Update this file every session. Not a handoff bridge — a permanent record of what was built, where we stand, and where we're going.
 
 ---
@@ -264,6 +264,42 @@ Key commit: `c363082`
 - Sparkline SVG was overlapping critical badge on agent cards — z-index + layout fix
 - `Pill` component placement adjusted so badge renders above sparkline layer
 
+### Phase 14 — Final Polish + Allowlist Expansion (session 7)
+Key commits: `4086557`, `c48e7c0`, `d79126f`
+
+**Transcript readability** (`TranscriptMessage.tsx`, new client component):
+- Messages > 300 chars: collapsible with `↓ show more` / `↑ show less` toggle
+- `whitespace-pre-wrap break-words` — long agent scripts don't overflow mobile
+- `max-w-[78%] sm:max-w-[82%]`
+
+**Agent profile loading skeleton** (full rebuild `[agentId]/loading.tsx`):
+- Covers all sections: header, stat strip, error leaderboard + worst calls side-by-side, heatmap (30 squares × 5 rows), outcome chart (12 stacked bars), before/after section
+- Matches actual page layout — no jump on content load
+
+**Mobile pass:**
+- `px-6` → `px-4 sm:px-6` on agent profile + call detail pages
+- Agent name + buttons: `flex-col sm:flex-row` — stacks on phone
+- Agent UUID: `break-all sm:break-normal`
+- Error Intelligence header, Before/After, Outcome chart headers: all `flex-col sm:flex-row`
+
+**Display names** (`DISPLAY_NAMES` map on agent profile):
+- All 12 agents have clean display names. "Shell Gas Uganda" / "Ramco_Gas_inbound" → "Ramco Gas"
+- `clientName` (raw DB) still used for RPC queries; `displayName` only for UI
+
+**Call recordings UI** (call detail page):
+- `fetchCallRecordingUrl` already existed in `ultravox.ts`
+- Added to parallel fetch. Native `<audio controls>` player renders above Error Analysis when URL available
+
+**README rewrite:**
+- Full rewrite: agent profile flow table, fix lifecycle, architecture, production safety, agents + patch status table
+
+**Apply-fix all agents + manual-only:**
+- `apply-fix/route.ts`: all 11 agent UUIDs in `ALLOWED_AGENTS`. Unknown UUIDs still 403.
+- `ApplyFixButton.tsx`: NECTOR-only gate removed. Confirmation shows exact error type + agent name.
+- `ApplyAllFixesButton.tsx`: allowlist check removed.
+- Agent profile: `isAllowlisted = true` for all agents.
+- `repeat-error-tracker.ts`: `AUTO_APPLY_ALLOWLIST` deleted. `auto_applied` hardcoded `false`. Tracker fires Telegram alerts only — never patches automatically.
+
 ### Phase 8 — Transcript Examples on Agent Profile (`cc21216`)
 - `example_line` (`agent_line` from `call_errors` JSONB) was fetched but never rendered
 - Added "Agent said" block inline on each error row
@@ -430,25 +466,20 @@ Each error type has patches (find→replace strings). On the agent profile page,
 ## What's Left — Prioritized
 
 ### ✅ Done: Homepage redesign (session 6)
-- GSAP scroll-scrubbed video hero (HeroScroll)
-- Below-fold SaaS sections (HomeSections): stats bar, benefits, how-it-works, CTA
-- Sharp industrial navbar (no rounded corners, tight tracking)
-- Dashboard sparkline/badge overlap fixed
+- GSAP scroll-scrubbed video hero + below-fold SaaS sections + dashboard bug fix
 
-### Next up: UI/UX final pass — remaining rough edges (session 7)
+### ✅ Done: Final polish + all-agent patching (session 7)
+- Transcript collapse (>300 chars collapsible)
+- Agent profile skeleton full rebuild (heatmap, outcome, before/after covered)
+- Mobile pass (padding, stacking headers, UUID break-all)
+- Shell Gas / Ramco Gas display name fixed (DISPLAY_NAMES map)
+- Call recordings audio player on call detail page
+- README full rewrite
+- apply-fix expanded to all 11 agents, manual-only, auto-apply killed
 
-- [ ] **Call detail transcript readability** — wall of text; collapsing long messages, role-color improvement, visual rhythm between turns
-- [ ] **Agent profile loading skeleton** — doesn't cover heatmap/outcome/compare sections below fold
-- [ ] **Mobile audit** — error leaderboard + worst calls panel on agent profile; spacing pass
-
-### Medium priority
-- [ ] **Shell Gas Uganda agent profile** — `client_name` is "Shell Gas Uganda" in DB, agent name is "Ramco_Gas_inbound". Heatmap/outcome data works. Fix-specs may not match (patches reference "Ramco Gas").
-- [ ] **Real Estate AI + NECTOR Demo patch verification** — patches written, need live confirmation `verifyPatch()` returns line numbers (run profile pages)
-- [ ] **Expand auto-apply allowlist** — NECTOR Demo + Davansh only. Add agents when FP rate < 5%.
-
-### Low priority
-- [ ] **Call recordings** — `GET /api/calls/{id}/recording` available, not exposed in UI
-- [ ] **README update** — document agent profile flow
+### Remaining (not blockers)
+- [ ] **Real Estate AI + NECTOR Demo patch verification** — open `/dashboard/efecb97c` and `/dashboard/428d7591` on prod, confirm green "✓ find text verified" badges. If any missing, update find string in fix-specs.ts.
+- [ ] **Next feature TBD** — see HANDOFF.md
 
 ---
 
@@ -457,8 +488,8 @@ Each error type has patches (find→replace strings). On the agent profile page,
 **NEVER POST/PATCH/DELETE to `api.ultravox.ai`.**  
 Live Uganda customers. ~100 calls/day. GET only.
 
-Exception: `POST /api/agents/[agentId]/apply-fix` — NECTOR Demo (`428d7591`) only.  
-Hard allowlist in route.ts → 403 for any other agent ID.  
+Exception: `POST /api/agents/[agentId]/apply-fix` — all 11 known agents in hard allowlist.  
+Unknown UUIDs → 403. Auth-gated. Manual only — no auto-apply.  
 Pre-flight `verifyPatch()` runs before any PATCH.
 
 ---

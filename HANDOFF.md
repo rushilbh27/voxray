@@ -246,17 +246,34 @@ All major agents now have verified fix-spec patches. See agent table above.
 
 ---
 
-## NEXT SESSION: UI/UX Final Pass (session 7)
+## ✅ COMPLETED: Final Polish + All-Agent Patching (session 7, commits `4086557` `c48e7c0` `d79126f`)
 
-**Goal:** Polish remaining rough edges in dashboard/agent profile views.
+**What was built:**
+- `TranscriptMessage.tsx` — collapsible chat bubble client component. Messages >300 chars get `↓ show more` toggle.
+- `[agentId]/loading.tsx` — full skeleton rebuild: header, stat strip, error leaderboard + worst calls side-by-side, heatmap rows, outcome chart bars, before/after section.
+- Mobile: `px-4 sm:px-6` everywhere, `flex-col sm:flex-row` on header + section headers, UUID `break-all sm:break-normal`.
+- `DISPLAY_NAMES` map on agent profile — Shell Gas Uganda / Ramco_Gas_inbound → "Ramco Gas". All 12 agents clean.
+- Call recordings: `fetchCallRecordingUrl` wired into call detail parallel fetch. Native `<audio controls>` renders when URL available.
+- README: full rewrite with agent profile flow table, fix lifecycle steps, production safety, agents table.
+- `apply-fix/route.ts`: all 11 agent UUIDs in `ALLOWED_AGENTS`.
+- `ApplyFixButton.tsx` / `ApplyAllFixesButton.tsx`: allowlist guards removed, confirmation shows exact error type + agent name.
+- `repeat-error-tracker.ts`: `AUTO_APPLY_ALLOWLIST` deleted. `auto_applied: false` hardcoded. Zero auto-apply.
 
-**In scope:**
-1. **Call detail transcript** — wall-of-text; collapsing long messages, role-color improvement, visual rhythm between turns
-2. **Agent profile loading skeleton** — doesn't reflect heatmap/outcome/compare below fold
-3. **Mobile audit** — error leaderboard + worst calls panel on agent profile; spacing pass
+---
 
-**Known issues still open:**
-- Shell Gas Uganda client_name mismatch (see PROJECT_STATUS)
-- Real Estate AI + NECTOR Demo patch verification (run profile pages, check line numbers)
-- Expand auto-apply allowlist when FP rate confident
-- Call recordings in UI
+## NEXT SESSION: session 8
+
+**First thing to do:**
+- Visit `/dashboard/efecb97c` (Real Estate AI) and `/dashboard/428d7591` (NECTOR Demo) on prod
+- Confirm green "✓ find text verified" badges appear for all patches
+- If any missing → find string in `fix-specs.ts` needs updating
+
+**Ideas for next work:**
+- New error types if Uganda agents developing new failure patterns
+- Multi-agent diff view (compare two agents side-by-side)
+- Email digest (weekly error summary, Supabase edge function)
+- Cost tracking dashboard (per-agent Haiku spend over time)
+
+**Known issues:**
+- Real Estate AI + NECTOR Demo patch verification (unconfirmed, see above)
+- Next.js workspace root warning (cosmetic, `turbopack.root` in next.config.ts silences it)
