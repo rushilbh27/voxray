@@ -56,14 +56,34 @@ export default function HomePage() {
             <span className="font-bold text-[14px] tracking-tight text-ink">Voxray</span>
           </div>
 
-          {/* CTA */}
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center justify-center px-5 py-2 bg-accent hover:bg-accent-hover text-canvas text-[11px] font-bold uppercase tracking-[0.1em] transition-colors border border-accent-border"
-            style={{ fontFamily: 'var(--font-mono)' }}
-          >
-            Open dashboard
-          </Link>
+          {/* Nav links */}
+          <nav className="flex items-center gap-1">
+            <Link
+              href="/dashboard"
+              className="px-3 py-1.5 text-[11px] font-medium text-ink-2 hover:text-ink transition-colors"
+            >
+              Dashboard
+            </Link>
+            <Link
+              href="/errors"
+              className="px-3 py-1.5 text-[11px] font-medium text-ink-2 hover:text-ink transition-colors"
+            >
+              Errors
+            </Link>
+            <Link
+              href="/docs"
+              className="px-3 py-1.5 text-[11px] font-medium text-ink-2 hover:text-ink transition-colors"
+            >
+              Docs
+            </Link>
+            <Link
+              href="/dashboard"
+              className="ml-2 inline-flex items-center justify-center px-4 py-1.5 bg-accent hover:bg-accent-hover text-canvas text-[11px] font-bold uppercase tracking-[0.1em] transition-colors border border-accent-border"
+              style={{ fontFamily: 'var(--font-mono)' }}
+            >
+              Open dashboard
+            </Link>
+          </nav>
         </header>
       </div>
 
