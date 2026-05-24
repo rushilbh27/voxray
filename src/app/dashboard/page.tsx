@@ -6,6 +6,7 @@ import { TrendChart } from '@/app/components/TrendChart';
 import { AckAlertButton } from '@/app/components/AckAlertButton';
 import { Nav } from '@/app/components/Nav';
 import { PipelineStrip } from '@/app/components/PipelineStrip';
+import { CostBreakdown, type AgentCostRow } from '@/app/components/CostBreakdown';
 import { LiveTracker } from '@/app/components/LiveTracker';
 import { CountUp } from '@/app/components/CountUp';
 import { Reveal } from '@/app/components/Reveal';
@@ -44,6 +45,10 @@ export default async function Dashboard({
   if (clientFilter) callLogQuery = callLogQuery.eq('client_name', clientFilter);
   if (statusFilter) callLogQuery = callLogQuery.eq('status', statusFilter);
 
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const sevenDaysAgo  = new Date(Date.now() -  7 * 24 * 60 * 60 * 1000).toISOString();
+  const todayStart    = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+
   const [
     { data: aggRows },
     { data: clientRows },
@@ -51,6 +56,7 @@ export default async function Dashboard({
     { data: pipelineRows },
     { data: agentSummaryRows },
     { data: agentIdRows },
+    { data: costRaw },
     activeAlerts,
     { data: calls, count: filteredTotal },
   ] = await Promise.all([
@@ -65,6 +71,12 @@ export default async function Dashboard({
       .not('agent_id', 'is', null)
       .order('created_at', { ascending: false })
       .limit(500),
+    supabaseAdmin
+      .from('llm_traces')
+      .select('agent_type, cost_usd, created_at')
+      .eq('purpose', 'error_analysis')
+      .not('cost_usd', 'is', null)
+      .gte('created_at', thirtyDaysAgo),
     import('@/lib/alert-engine').then((m) => m.runAlertCheck()).catch(() => [] as import('@/lib/alert-engine').FiredAlert[]),
     callLogQuery,
   ]);
@@ -206,6 +218,23 @@ export default async function Dashboard({
   const pipelineStats = (pipelineRows as Array<Record<string, unknown>> | null)?.[0] ?? null;
   const totalPages = Math.ceil((filteredTotal || 0) / PAGE_SIZE);
 
+  // ── Cost breakdown ────────────────────────────────────────────────────────────
+  interface CostTrace { agent_type: string | null; cost_usd: number | null; created_at: string }
+  const costTraces = (costRaw ?? []) as CostTrace[];
+  const costByAgent = new Map<string, AgentCostRow>();
+  let costToday = 0, costWeek = 0, costAllTime = 0;
+  for (const t of costTraces) {
+    const at   = t.agent_type ?? 'unknown';
+    const cost = t.cost_usd ?? 0;
+    const when = new Date(t.created_at);
+    costAllTime += cost;
+    if (t.created_at >= sevenDaysAgo) costWeek  += cost;
+    if (t.created_at >= todayStart)   costToday += cost;
+    const existing = costByAgent.get(at);
+    if (existing) { existing.total += cost; existing.count++; }
+    else costByAgent.set(at, { agentType: at, total: cost, count: 1 });
+  }
+
   function buildUrl(overrides: Record<string, string>) {
     const p = { page: String(page), client: clientFilter, status: statusFilter, ...overrides };
     const qs = Object.entries(p).filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
@@ -311,6 +340,14 @@ export default async function Dashboard({
 
           {/* ── PIPELINE STRIP ─────────────────────────────────────────────── */}
           <PipelineStrip stats={pipelineStats as Parameters<typeof PipelineStrip>[0]['stats']} />
+
+          {/* ── COST BREAKDOWN ─────────────────────────────────────────────── */}
+          <CostBreakdown
+            today={costToday}
+            week={costWeek}
+            allTime={costAllTime}
+            byAgent={[...costByAgent.values()]}
+          />
 
           {/* ── ALERTS ─────────────────────────────────────────────────────── */}
           {activeAlerts.length > 0 && (

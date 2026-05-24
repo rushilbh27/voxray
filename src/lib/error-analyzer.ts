@@ -30,15 +30,17 @@ export interface ErrorAnalysis {
   critical_error_count: number;
 }
 
-export type AgentType = 'sales' | 'debt' | 'cold_outreach' | 'unknown';
+export type AgentType = 'sales' | 'debt' | 'cold_outreach' | 'inbound' | 'unknown';
 
 export function detectAgentType(clientName: string): AgentType {
   const n = clientName?.toLowerCase() ?? '';
-  if (n.includes('debt') || n.includes('collector')) return 'debt';
-  if (n.includes('cold') || n.includes('outreach')) return 'cold_outreach';
-  if (n.includes('sales') || n.includes('shell gas') || n.includes('uganda comm') ||
-      n.includes('edifice') || n.includes('ramco') || n.includes('davansh') ||
-      n.includes('acme') || n.includes('nector')) return 'sales';
+  if (n.includes('debt') || n.includes('collector') || n.includes('welcome')) return 'debt';
+  if (n.includes('cold') || n.includes('outreach') || n.includes('follow')) return 'cold_outreach';
+  if (n.includes('sales') || n.includes('real estate') || n.includes('acme')) return 'sales';
+  // Inbound receptionist agents — these handle inbound calls, NOT outbound sales
+  if (n.includes('shell gas') || n.includes('ramco') || n.includes('edifice') ||
+      n.includes('davansh') || n.includes('nector') || n.includes('uganda comm') ||
+      n.includes('inbound')) return 'inbound';
   return 'sales'; // default to sales analysis
 }function buildAnalysisPrompt(agentType: AgentType, transcript: string, agentPrompt?: string): string {
   const base = `You are an expert AI voice agent quality auditor. Analyze this call transcript and identify SPECIFIC mistakes the agent made.
@@ -162,6 +164,32 @@ ERROR TYPES TO DETECT:
 - pushed_back: Agent argued or pushed when customer said not interested
 
 GOAL: Get customer name + answer questions + schedule callback/appointment.`,
+
+      inbound: `
+AGENT TYPE: Inbound Receptionist AI (answers inbound calls — NOT outbound sales)
+
+IMPORTANT: This agent handles INCOMING calls. Do NOT flag "wrong_call_type" for inbound/receptionist behavior — that is correct.
+
+RULES THIS AGENT MUST FOLLOW:
+1. Greet as the correct company — COMPANY_NAME in the system prompt (CRITICAL if wrong)
+2. Introduce as the correct agent name — AGENT_NAME in the system prompt (CRITICAL if wrong)
+3. NEVER accept garbled/unclear caller responses — must ask "Could you repeat that?"
+4. Ask ONE question at a time — never stack multiple questions in one turn
+5. NEVER invent information not in the knowledge base / system prompt context
+6. NEVER make promises the agent cannot keep (e.g. "I will send you right now")
+7. Must call saveAnswers BEFORE hangUp — ONLY flag no_save_answers if 4+ agent turns AND no Tool message in final 4 messages
+
+ERROR TYPES TO DETECT:
+- wrong_company_name: Agent greeted or identified as wrong company name (CRITICAL)
+- wrong_agent_name: Agent introduced with wrong name vs. what system prompt specifies (CRITICAL)
+- wrong_info: Agent stated incorrect or invented information not in their knowledge base
+- accepted_garbled_audio: Unclear caller response treated as valid answer
+- stacked_questions: Multiple questions asked in a single turn
+- broke_promise: Agent promised something they cannot deliver (e.g. immediate transfers, callbacks)
+- no_save_answers: Call ended without saveAnswers tool call (CRITICAL)
+- accepted_unknown_location: Agent accepted an unclear area/neighborhood as valid without asking to clarify
+
+GOAL: Handle the caller's inquiry correctly, collect required info, and call saveAnswers.`,
 
       unknown: `
 AGENT TYPE: Unknown — analyze for general quality issues.

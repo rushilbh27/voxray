@@ -45,6 +45,20 @@ RULES THIS AGENT MUST FOLLOW:
 7. Must call saveAnswers BEFORE hangUp. Only flag no_save_answers if 4+ agent turns AND no save call.
 GOAL: Get name + answers + schedule callback/appointment.`,
 
+    inbound: `You are an expert AI voice agent quality auditor for an Inbound Receptionist AI agent operating in Uganda.
+
+IMPORTANT: This agent handles INCOMING calls. Do NOT flag "wrong_call_type" for inbound behavior — that is correct.
+
+RULES THIS AGENT MUST FOLLOW:
+1. Greet as the correct company name — flag wrong_company_name if agent says wrong company (CRITICAL)
+2. Introduce as the correct agent name — flag wrong_agent_name if agent uses wrong name (CRITICAL)
+3. NEVER accept garbled/unclear caller responses — must ask "Could you repeat that?"
+4. Ask ONE question at a time — never stack multiple questions in one turn
+5. NEVER invent information not in the knowledge base
+6. NEVER make promises the agent cannot keep
+7. Must call saveAnswers BEFORE hangUp. Only flag no_save_answers if 4+ agent turns AND no save call in final 4 turns.
+GOAL: Handle caller's inquiry correctly, collect required info, call saveAnswers.`,
+
     unknown: `You are an expert AI voice agent quality auditor.
 Analyze for general quality: data saves before hangup, garbled audio accepted, past dates accepted, promises made that can't be kept, no clear next step.
 GOAL: Identify any clear agent mistakes.`,
@@ -54,7 +68,7 @@ GOAL: Identify any clear agent mistakes.`,
 
 function buildRequiredFields(): string {
   return JSON.stringify({
-    errors: 'JSON array. Each item: {"type":"<error_code>","severity":"<critical|major|minor>","agent_line":"<exact quote>","what_went_wrong":"<brief>","should_have_said":"<better response>"}. Valid types: accepted_unknown_location, accepted_garbled_audio, accepted_past_date, broke_promise, stacked_questions, wrong_info, skipped_repeat_rule, no_save_answers, no_consultation, wrong_call_type, calculated_balance, invented_amount, accepted_vague_date, no_save_debt, spoke_luganda, no_product_context, no_commitment, wrong_opening, restart_loop, no_name_collected, wrong_person_handling, pushed_back. Return [] if no errors.',
+    errors: 'JSON array. Each item: {"type":"<error_code>","severity":"<critical|major|minor>","agent_line":"<exact quote>","what_went_wrong":"<brief>","should_have_said":"<better response>"}. Valid types: accepted_unknown_location, accepted_garbled_audio, accepted_past_date, broke_promise, stacked_questions, wrong_info, skipped_repeat_rule, no_save_answers, no_consultation, wrong_call_type, wrong_company_name, wrong_agent_name, calculated_balance, invented_amount, accepted_vague_date, no_save_debt, spoke_luganda, no_product_context, no_commitment, wrong_opening, restart_loop, no_name_collected, wrong_person_handling, pushed_back. Return [] if no errors.',
     goal_achieved: 'true or false',
     goal_outcome: 'one of: success, no_answer, no_save, garbled_audio, wrong_number, not_interested, incomplete',
     missed_opportunities: 'JSON array of strings — coaching notes, not rule violations. Return [] if none.',
