@@ -62,14 +62,18 @@ export function HeroScroll({ src, scrollHeight = '400vh', phases }: Props) {
 
           // Phase 0 (start=0): skip fade-in, show immediately
           const doFadeIn = phase.start > 0.004 && local < fadeW;
+          const isLast = i === phases.length - 1;
 
           alpha = doFadeIn
             ? local / fadeW
-            : local > span - fadeW
+            : (!isLast && local > span - fadeW)
             ? (span - local) / fadeW
             : 1;
 
           alpha = Math.max(0, Math.min(1, alpha));
+        } else if (i === phases.length - 1 && progress > phase.end) {
+          // If the user scrolls past the defined end of the last phase, keep it fully visible
+          alpha = 1;
         }
 
         el.style.opacity   = alpha.toFixed(3);

@@ -411,7 +411,14 @@ export default async function Dashboard({
                                 : 'no active errors'}
                             </div>
                           </div>
-                          <Pill tone={tone} count={agent.critical_count} errorRate={agent.error_rate} />
+                          <div className="flex items-center gap-3 shrink-0">
+                            {!isFeatured && sparkData.length > 1 && (
+                              <div className="opacity-40 group-hover:opacity-80 transition-opacity">
+                                <Sparkline data={sparkData} width={48} height={16} glow={false} />
+                              </div>
+                            )}
+                            <Pill tone={tone} count={agent.critical_count} errorRate={agent.error_rate} />
+                          </div>
                         </div>
 
                         <div className={`grid ${isFeatured ? 'grid-cols-4' : 'grid-cols-3'} gap-4 items-end`}>
@@ -443,12 +450,6 @@ export default async function Dashboard({
                           </span>
                         </div>
                       </div>
-
-                      {!isFeatured && sparkData.length > 1 && (
-                        <div className="absolute right-3 top-3 opacity-30 group-hover:opacity-80 transition-opacity">
-                          <Sparkline data={sparkData} width={64} height={20} glow={false} />
-                        </div>
-                      )}
                     </Link>
                   );
                 })}
