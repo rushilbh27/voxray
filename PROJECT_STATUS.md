@@ -1,6 +1,6 @@
 # Voxray — Project Status Report
 
-> Last updated: 2026-05-25 (session 8 — cost dashboard, inbound AgentType, wrong_company_name detection, patch verification)  
+> Last updated: 2026-05-25 (session 9 — /docs page, nav polish, login redesign, new agent detection, launch hardening)  
 > Update this file every session. Not a handoff bridge — a permanent record of what was built, where we stand, and where we're going.
 
 ---
@@ -509,6 +509,37 @@ Each error type has patches (find→replace strings). On the agent profile page,
 ### ✅ Done: Patch verification (session 8)
 - Real Estate AI: all 3 patches verified ✅
 - NECTOR Demo: stacked_questions already applied, other 3 verified ✅
+
+### Phase 16 — /docs Page + Nav Polish + Login + Launch Hardening (session 9)
+
+**Navigation:**
+- Homepage navbar: removed redundant Dashboard/Errors text links; Docs = outlined box button, Dashboard = filled accent button
+- Hero CTA button: removed `rounded-lg`, matched nav style (sharp, mono, uppercase)
+- CTA section: removed glow-bg, `bg-canvas` — no longer visually "weird and standing out"
+
+**`/docs` page (`src/app/docs/page.tsx`):**
+- Full Next.js server component at `/docs` — public, no auth redirect
+- Sticky sidebar with anchor nav (Overview, Dashboard, REST API v1, MCP Server, CLI, Alerting, Error Types)
+- Sharp corners throughout (no `rounded-*`) — matches app design system
+- 23-row Error Types reference table, curl examples + JSON responses, MCP stdio + HTTP setup, CLI 7 commands
+- `← Home` + `Dashboard →` links in header
+
+**Login page redesign (`src/app/login/page.tsx`):**
+- Full rewrite: sharp corners, ambient radial glow (amber), design token labels, mono uppercase tracking
+- Removed all `rounded-*`, matched nav button style
+
+**New agent detection (`src/lib/ultravox.ts`, `src/app/dashboard/page.tsx`):**
+- Added `fetchAgents()` — paginates `GET /api/agents`
+- Dashboard fetches live agents in parallel; zero-call new agents now appear in agent grid immediately
+
+**Launch hardening:**
+- `robots.ts` — bots allowed `/` and `/docs`, blocked `/dashboard /errors /calls /api`
+- `sitemap.ts` — `/` and `/docs` indexed
+- `layout.tsx` — OG + Twitter card metadata, `metadataBase`
+- `.env.example` — documented all env vars with security warnings
+- `vercel.json` — cron reverted to daily (Hobby plan limit; hourly = Pro only)
+- Env vars set in Vercel: `VOXRAY_API_KEY`, `CRON_SECRET`, `ULTRAVOX_WEBHOOK_SECRET`
+- **Site is live and launched: https://voxray.vercel.app** 🚀
 
 ### Remaining (not blockers)
 - [ ] **Re-analyze Shell Gas Uganda** — hit Reanalyze on `/dashboard/5da7bc3e` to clear existing wrong_call_type FPs with new inbound rules

@@ -267,24 +267,35 @@ All major agents now have verified fix-spec patches. See agent table above.
 - Patch verification: Real Estate AI all 3 ✅, NECTOR Demo stacked_questions already applied ✅
 - `CostBreakdown.tsx` — server component on `/dashboard`: today/week/all-time cost tiles + CSS horizontal bars per agent type
 - `dashboard/page.tsx` — `llm_traces` cost query in Promise.all, computes cost buckets, renders CostBreakdown below PipelineStrip
-- `error-analyzer.ts` — added `'inbound'` AgentType; `detectAgentType()` now maps Shell Gas/Ramco/Edifice/Davansh/NECTOR/UCC → `'inbound'` (fixes ~50 `wrong_call_type` FPs per 400 calls)
-- `error-analyzer.ts` — inbound rules: `wrong_company_name` (CRITICAL), `wrong_agent_name` (CRITICAL), does NOT flag inbound behavior as wrong_call_type
+- `error-analyzer.ts` — added `'inbound'` AgentType; `detectAgentType()` now maps Shell Gas/Ramco/Edifice/Davansh/NECTOR/UCC → `'inbound'`
 - `audio-analyzer.ts` — same inbound AgentType + rules on Llama path
 
 ---
 
-## NEXT SESSION: session 9
+## ✅ COMPLETED: /docs + Nav Polish + Login + Launch (session 9, commits `2508008`→`549ddaf`)
 
-**First thing to do:**
-- Verify `/dashboard` on prod shows Cost & Usage strip with dollar values
-- Optional: hit Reanalyze on `/dashboard/5da7bc3e` (Ramco Gas) to clear existing wrong_call_type FPs
+**What was built:**
+- `/docs` page — full server component, sticky sidebar, sharp corners, 23-error-type reference table, REST API curl examples, MCP + CLI docs, `← Home` link
+- Homepage nav — Docs outlined box button, Dashboard filled, removed redundant links
+- Hero CTA button — sharp corners, mono font matching nav
+- CTA section — glow removed, no longer visually distracting
+- Login page — full redesign: ambient glow, sharp, mono labels, design tokens
+- `fetchAgents()` in `ultravox.ts` — new agents with 0 calls now show in dashboard
+- `robots.ts`, `sitemap.ts`, OG metadata in `layout.tsx`
+- `.env.example` updated with all vars + security warnings
+- Vercel env vars set: `VOXRAY_API_KEY`, `CRON_SECRET`, `ULTRAVOX_WEBHOOK_SECRET`
+- **🚀 LAUNCHED: https://voxray.vercel.app**
+
+---
+
+## NEXT SESSION: session 10
+
+**Known issues / low priority:**
+- Shell Gas Uganda calls have no agent_id in DB → analyzed with static inbound rules (not live prompt). Fix: find agent_id from Ultravox and populate.
+- Re-analyze Ramco Gas (`/dashboard/5da7bc3e`) to clear old wrong_call_type FPs with new inbound rules.
 
 **Ideas for next work:**
 - Multi-agent diff view (compare two agents side-by-side)
 - Email digest (weekly error summary, Supabase edge function)
-- Cost trend chart (daily cost over time — need 7+ days data to be useful)
-- Populate agent_id for Shell Gas Uganda calls (currently 0/56 have agent_id → live prompt never fetched)
-
-**Known issues:**
-- Shell Gas Uganda calls have no agent_id in DB → analyzed with static inbound rules (not live prompt). Low priority — inbound rules are now correct.
-- Next.js workspace root warning (cosmetic, `turbopack.root` in next.config.ts silences it)
+- Cost trend chart (daily cost over time — need 7+ days of data)
+- Populate agent_id for Shell Gas Uganda calls
