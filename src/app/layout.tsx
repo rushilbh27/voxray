@@ -13,8 +13,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Voxray — Voice Agent Observatory",
-  description: "Production observability dashboard for Ultravox voice agents",
+  title: "Voxray — Voice Agent Observability",
+  description: "Real-time error detection for Ultravox voice AI agents. Catch mistakes, apply fixes, track error rate by prompt version.",
+  metadataBase: new URL('https://voxray.vercel.app'),
+  openGraph: {
+    title: "Voxray — Voice Agent Observability",
+    description: "Real-time error detection for Ultravox voice AI agents. Catch mistakes, apply fixes, track error rate by prompt version.",
+    url: 'https://voxray.vercel.app',
+    siteName: 'Voxray',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "Voxray — Voice Agent Observability",
+    description: "Real-time error detection for Ultravox voice AI agents.",
+  },
 };
 
 export default function RootLayout({
