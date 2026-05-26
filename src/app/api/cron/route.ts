@@ -81,7 +81,27 @@ export async function GET(request: Request) {
     }
   }
 
-  // ── 2. Sync latest calls ───────────────────────────────────────────────────
+  // ── 2. Retry llama_pending calls via Llama (never Haiku) ──────────────────
+  const { data: llamaPending } = await supabaseAdmin
+    .from('ultravox_calls')
+    .select('call_id, client_name, agent_id')
+    .eq('analysis_status', 'llama_pending')
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (llamaPending && llamaPending.length > 0) {
+    const { queueAudioAnalysis } = await import('@/lib/audio-analyzer');
+    for (const call of llamaPending) {
+      queueAudioAnalysis(
+        call.call_id,
+        call.agent_id ?? null,
+        call.client_name ?? 'Unknown',
+        WEBHOOK_URL,
+      ).catch(() => { /* keep llama_pending — Llama will catch up */ });
+    }
+  }
+
+  // ── 3. Sync latest calls ───────────────────────────────────────────────────
   await fetch(`${process.env.VOXRAY_URL ?? 'https://voxray.vercel.app'}/api/sync`, {
     method: 'POST',
   }).catch(() => null);

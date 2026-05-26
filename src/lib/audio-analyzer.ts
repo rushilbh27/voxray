@@ -2,8 +2,8 @@ import { detectAgentType, type AgentType } from './error-analyzer';
 import type { ErrorAnalysis, CallError } from './error-analyzer';
 
 const LLAMA_SERVER = 'http://72.61.206.216:8000/process-call';
-const RECORDING_FETCH_TIMEOUT_MS = 180_000; // 3min — long calls = large WAV files
-const LLAMA_QUEUE_TIMEOUT_MS = 120_000;     // 2min — upload large WAV to Llama
+const RECORDING_FETCH_TIMEOUT_MS = 360_000; // 6min — large WAV files on slow connection
+const LLAMA_QUEUE_TIMEOUT_MS = 360_000;     // 6min — Llama server is slow but reliable
 
 function buildSystemPrompt(agentType: AgentType): string {
   const rules: Record<AgentType, string> = {
