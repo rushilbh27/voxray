@@ -112,14 +112,15 @@ export async function POST(req: NextRequest) {
           .from('ultravox_calls')
           .update({
             call_errors:           result.analysis,
-            analysis_status:       'complete',
+            // haiku_failed = Llama will fill errors via /api/webhook/transcript
+            analysis_status:       result.haiku_failed ? 'llama_pending' : 'complete',
             error_count:           result.analysis.error_count,
             critical_error_count:  result.analysis.critical_error_count,
             prompt_hash:           result.prompt_hash ?? null,
           })
           .eq('call_id', callId);
 
-        analysisErrors = result.analysis.errors ?? [];
+        analysisErrors = result.haiku_failed ? [] : (result.analysis.errors ?? []);
       } else {
         await supabaseAdmin
           .from('ultravox_calls')

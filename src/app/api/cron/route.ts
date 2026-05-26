@@ -64,7 +64,7 @@ export async function GET(request: Request) {
         .from('ultravox_calls')
         .update({
           call_errors:          result.analysis,
-          analysis_status:      'complete',
+          analysis_status:      result.haiku_failed ? 'llama_pending' : 'complete',
           error_count:          result.analysis.error_count,
           critical_error_count: result.analysis.critical_error_count,
           prompt_hash:          result.prompt_hash ?? null,

@@ -20,7 +20,18 @@ export interface AnalyzeResult {
   analysis: ErrorAnalysis;
   enrichment_queued: boolean;
   prompt_hash?: string; // SHA-256 of the agent's system prompt at analysis time
+  haiku_failed?: boolean; // true = Haiku unavailable, Llama fallback in progress
 }
+
+const EMPTY_ANALYSIS: ErrorAnalysis = {
+  errors: [],
+  goal_achieved: false,
+  goal_outcome: 'unknown',
+  missed_opportunities: [],
+  summary: 'Analysis pending — AI provider unavailable, Llama fallback in progress.',
+  error_count: 0,
+  critical_error_count: 0,
+};
 
 interface AnalyzeCallOptions {
   callId: string;
@@ -52,17 +63,27 @@ export async function analyzeCall(opts: AnalyzeCallOptions): Promise<AnalyzeResu
     }
   }
 
-  // ── Primary: Claude Haiku text analysis (always, synchronous) ──────────────
+  // ── Primary: Claude Haiku text analysis ────────────────────────────────────
   const agentType = detectAgentType(clientName);
-  const analysis = await analyzeCallErrors(messages, agentType, { callId, promptHash, agentPrompt });
+  let analysis: ErrorAnalysis;
+  let haiku_failed = false;
 
-  // ── Enrichment: Llama audio pipeline (fire-and-forget, non-blocking) ───────
-  // Only used to get raw_transcript + customer_name + agent_name via webhook.
-  // Errors from Llama are intentionally ignored — Haiku is authoritative.
+  try {
+    analysis = await analyzeCallErrors(messages, agentType, { callId, promptHash, agentPrompt });
+  } catch (err) {
+    // Haiku unavailable (billing, rate limit, network) — Llama webhook will fill errors
+    console.error('[call-analyzer] Haiku failed, falling back to Llama:', err instanceof Error ? err.message : err);
+    analysis = { ...EMPTY_ANALYSIS };
+    haiku_failed = true;
+  }
+
+  // ── Fallback / Enrichment: Llama audio pipeline (fire-and-forget) ──────────
+  // When haiku_failed=true: Llama is the primary source of errors (full analysis).
+  // When haiku_failed=false: Llama only enriches (transcript + names). Errors ignored.
   let enrichment_queued = false;
   queueAudioAnalysis(callId, agentId ?? null, clientName, webhookUrl)
     .then(() => { enrichment_queued = true; })
     .catch(() => { /* recording unavailable or server down — not critical */ });
 
-  return { analysis, enrichment_queued, prompt_hash: promptHash };
+  return { analysis, enrichment_queued, prompt_hash: promptHash, haiku_failed };
 }
