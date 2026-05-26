@@ -6,13 +6,16 @@
  * - NEVER marks calls as 'error' — keeps as 'llama_pending' so cron retries via Llama
  * - Never touches Haiku
  */
-import 'dotenv/config';
+import { config } from 'dotenv';
+config({ path: '.env.local' });
 import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
 import { queueAudioAnalysis, RecordingNotFoundError } from '../src/lib/audio-analyzer';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { realtime: { transport: ws } }
 );
 
 const WEBHOOK_URL  = `${process.env.VOXRAY_URL ?? 'https://voxray.vercel.app'}/api/webhook/transcript`;

@@ -288,14 +288,31 @@ All major agents now have verified fix-spec patches. See agent table above.
 
 ---
 
-## NEXT SESSION: session 10
+## ✅ COMPLETED: Session 10 — Llama Full Fallback When Haiku Down
+
+**What was built:**
+- Haiku failure now auto-detected → `haiku_failed=true` flag propagates through pipeline
+- `call-ended` webhook marks `llama_pending`, Llama already queued for enrichment → webhook fires → errors saved
+- `webhook/transcript` checks `analysis_status` — if `llama_pending`, saves Llama errors as `call_errors` + marks `complete`
+- `cron`: detects Haiku down on first failure, routes remaining 29 calls directly to Llama. `llama_pending` retry limit 20 → 100/hour
+- `scripts/queue-llama-all.ts`: one-time backfill script (killed mid-run, remainder handled by cron)
+- Timeouts: 6min for recording fetch + Llama queue
+- NEVER marks `error` — always stays `llama_pending` so cron retries
+
+**Key commits:** `6394341` (backfill script + webhook + call-analyzer), `91fff4b` (cron auto-routing)
+
+---
+
+## NEXT SESSION: session 11
 
 **Known issues / low priority:**
 - Shell Gas Uganda calls have no agent_id in DB → analyzed with static inbound rules (not live prompt). Fix: find agent_id from Ultravox and populate.
 - Re-analyze Ramco Gas (`/dashboard/5da7bc3e`) to clear old wrong_call_type FPs with new inbound rules.
+- Backlog of `llama_pending` calls from killed script — cron will clear ~100/hour automatically
 
 **Ideas for next work:**
 - Multi-agent diff view (compare two agents side-by-side)
 - Email digest (weekly error summary, Supabase edge function)
 - Cost trend chart (daily cost over time — need 7+ days of data)
 - Populate agent_id for Shell Gas Uganda calls
+- Pay Anthropic bill → switch back to Haiku as primary (zero code changes needed)

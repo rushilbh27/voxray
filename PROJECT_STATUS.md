@@ -1,6 +1,6 @@
 # Voxray — Project Status Report
 
-> Last updated: 2026-05-25 (session 9 — /docs page, nav polish, login redesign, new agent detection, launch hardening)  
+> Last updated: 2026-05-27 (session 10 — Llama fallback when Haiku down, auto-routing, cron scale-up)  
 > Update this file every session. Not a handoff bridge — a permanent record of what was built, where we stand, and where we're going.
 
 ---
@@ -576,3 +576,17 @@ ULTRAVOX_WEBHOOK_SECRET=
 VOXRAY_API_KEY=             # optional — API v1 auth
 CRON_SECRET=                # optional — cron route auth
 ```
+
+---
+
+## ✅ COMPLETED: Llama Full Fallback When Haiku Down (session 10, commits `6394341`→`91fff4b`)
+
+**What was built:**
+- `call-analyzer.ts` — Haiku wrapped in try/catch; on failure returns `haiku_failed=true` + empty analysis placeholder
+- `audio-analyzer.ts` — timeouts bumped to 6min (recording fetch + Llama queue)
+- `webhook/call-ended/route.ts` — sets `analysis_status: 'llama_pending'` when `haiku_failed`
+- `webhook/transcript/route.ts` — full rework: checks `analysis_status` before saving; if `llama_pending`/`error`/`pending`, parses Llama errors via `parseExtractedToAnalysis()` and saves as `call_errors` + marks `complete`
+- `cron/route.ts` — detects Haiku down on first failure (`haikuDown` flag), routes remaining directly to Llama; `llama_pending` retry limit 20 → 100
+- `scripts/queue-llama-all.ts` (NEW) — one-time backfill script: 2 concurrent, 5s batches, 3 retries, keeps `llama_pending` on failure
+
+**Status:** Fully automatic. New calls auto-route to Llama when Haiku down. Cron clears ~130 backlogged calls/hour.
