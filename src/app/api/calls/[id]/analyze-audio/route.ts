@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       .eq('call_id', callId)
       .order('ordinal', { ascending: true });
 
-    const { analysis } = await analyzeCall({
+    const result = await analyzeCall({
       callId,
       agentId: call.agent_id ?? null,
       clientName: call.client_name ?? '',
@@ -47,14 +47,14 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     await supabaseAdmin
       .from('ultravox_calls')
       .update({
-        call_errors: analysis,
-        analysis_status: 'complete',
-        error_count: analysis.error_count,
-        critical_error_count: analysis.critical_error_count,
+        call_errors:          result.analysis,
+        analysis_status:      result.haiku_failed ? 'llama_pending' : 'complete',
+        error_count:          result.analysis.error_count,
+        critical_error_count: result.analysis.critical_error_count,
       })
       .eq('call_id', callId);
 
-    return NextResponse.json({ status: 'complete', analysis });
+    return NextResponse.json({ status: result.haiku_failed ? 'llama_pending' : 'complete' });
   } catch (err) {
     await supabaseAdmin
       .from('ultravox_calls')
