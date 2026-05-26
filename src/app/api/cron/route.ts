@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     }
   }
 
-  const results = { analyzed: 0, errors: 0, alerts_fired: 0, remaining: 0 };
+  const results = { analyzed: 0, errors: 0, alerts_fired: 0, remaining: 0, llama_queued: 0 };
 
   // ── 1. Batch analyze unanalyzed calls ──────────────────────────────────────
   const { data: calls, count } = await supabaseAdmin
@@ -39,7 +39,22 @@ export async function GET(request: Request) {
 
   results.remaining = Math.max(0, (count ?? 0) - BATCH_SIZE);
 
+  const { queueAudioAnalysis } = await import('@/lib/audio-analyzer');
+  let haikuDown = false; // once Haiku fails once, skip it for rest of batch
+
   for (const call of calls ?? []) {
+    // If Haiku already confirmed down this run, route directly to Llama
+    if (haikuDown) {
+      await supabaseAdmin
+        .from('ultravox_calls')
+        .update({ analysis_status: 'llama_pending' })
+        .eq('call_id', call.call_id);
+      queueAudioAnalysis(call.call_id, call.agent_id ?? null, call.client_name ?? 'Unknown', WEBHOOK_URL)
+        .catch(() => { /* keep llama_pending */ });
+      results.llama_queued++;
+      continue;
+    }
+
     try {
       await supabaseAdmin
         .from('ultravox_calls')
@@ -60,18 +75,29 @@ export async function GET(request: Request) {
         webhookUrl: WEBHOOK_URL,
       });
 
-      await supabaseAdmin
-        .from('ultravox_calls')
-        .update({
-          call_errors:          result.analysis,
-          analysis_status:      result.haiku_failed ? 'llama_pending' : 'complete',
-          error_count:          result.analysis.error_count,
-          critical_error_count: result.analysis.critical_error_count,
-          prompt_hash:          result.prompt_hash ?? null,
-        })
-        .eq('call_id', call.call_id);
-
-      results.analyzed++;
+      if (result.haiku_failed) {
+        // Haiku is down — flip flag, route this call and all remaining to Llama
+        haikuDown = true;
+        await supabaseAdmin
+          .from('ultravox_calls')
+          .update({ analysis_status: 'llama_pending' })
+          .eq('call_id', call.call_id);
+        queueAudioAnalysis(call.call_id, call.agent_id ?? null, call.client_name ?? 'Unknown', WEBHOOK_URL)
+          .catch(() => { /* keep llama_pending */ });
+        results.llama_queued++;
+      } else {
+        await supabaseAdmin
+          .from('ultravox_calls')
+          .update({
+            call_errors:          result.analysis,
+            analysis_status:      'complete',
+            error_count:          result.analysis.error_count,
+            critical_error_count: result.analysis.critical_error_count,
+            prompt_hash:          result.prompt_hash ?? null,
+          })
+          .eq('call_id', call.call_id);
+        results.analyzed++;
+      }
     } catch {
       results.errors++;
       await supabaseAdmin
@@ -87,10 +113,9 @@ export async function GET(request: Request) {
     .select('call_id, client_name, agent_id')
     .eq('analysis_status', 'llama_pending')
     .order('created_at', { ascending: false })
-    .limit(20);
+    .limit(100);
 
   if (llamaPending && llamaPending.length > 0) {
-    const { queueAudioAnalysis } = await import('@/lib/audio-analyzer');
     for (const call of llamaPending) {
       queueAudioAnalysis(
         call.call_id,
@@ -98,6 +123,7 @@ export async function GET(request: Request) {
         call.client_name ?? 'Unknown',
         WEBHOOK_URL,
       ).catch(() => { /* keep llama_pending — Llama will catch up */ });
+      results.llama_queued++;
     }
   }
 
@@ -113,6 +139,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ok: true,
     ran_at: new Date().toISOString(),
+    haiku_down: haikuDown,
     ...results,
   });
 }
