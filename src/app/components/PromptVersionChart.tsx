@@ -23,7 +23,7 @@ export function PromptVersionChart({ data }: Props) {
   }
 
   const chartData = data.map((d, i) => ({
-    name:      `v${i + 1} · ${d.prompt_hash.slice(0, 6)}`,
+    name:      `v${i + 1} · ${(d.prompt_hash ?? '??????').slice(0, 6)}`,
     errorRate: d.total > 0 ? Math.round((d.with_errors / d.total) * 100) : 0,
     total:     d.total,
     firstUsed: new Date(d.first_used).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),

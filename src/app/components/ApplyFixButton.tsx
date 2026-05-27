@@ -10,9 +10,19 @@ interface Props {
 
 type State = 'idle' | 'confirming' | 'applying' | 'done' | 'already_applied' | 'error';
 
+interface ApplyResult {
+  applied:      string[];
+  patches:      { label: string; find: string; replace: string }[];
+  curl_preview: string;
+  new_hash:     string;
+}
+
 export function ApplyFixButton({ agentId, agentName, errorType, description }: Props) {
-  const [state, setState]   = useState<State>('idle');
-  const [errMsg, setErrMsg] = useState('');
+  const [state, setState]     = useState<State>('idle');
+  const [errMsg, setErrMsg]   = useState('');
+  const [result, setResult]   = useState<ApplyResult | null>(null);
+  const [showCurl, setShowCurl] = useState(false);
+  const [copied, setCopied]   = useState(false);
 
   async function apply() {
     setState('applying');
@@ -29,6 +39,7 @@ export function ApplyFixButton({ agentId, agentName, errorType, description }: P
       } else if (!res.ok) {
         throw new Error(data.error ?? 'Apply failed');
       } else {
+        setResult(data as ApplyResult);
         setState('done');
       }
     } catch (e) {
@@ -37,10 +48,40 @@ export function ApplyFixButton({ agentId, agentName, errorType, description }: P
     }
   }
 
+  function copyCurl() {
+    if (!result?.curl_preview) return;
+    navigator.clipboard.writeText(result.curl_preview);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   if (state === 'done') {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-ok font-medium">
-        ✓ Patched — {agentName}
+      <span className="flex flex-col gap-1.5">
+        <span className="inline-flex items-center gap-2 text-xs text-ok font-medium">
+          ✓ Patched — {agentName}
+          {result?.curl_preview && (
+            <button
+              onClick={() => setShowCurl(!showCurl)}
+              className="text-[10px] px-1.5 py-0.5 border border-border text-ink-3 hover:text-ink rounded transition-colors font-mono"
+            >
+              {showCurl ? 'hide curl' : 'view curl'}
+            </button>
+          )}
+        </span>
+        {showCurl && result?.curl_preview && (
+          <div className="relative mt-1">
+            <pre className="text-[10px] font-mono text-ink-2 bg-surface-2 border border-border rounded p-3 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed max-h-48 overflow-y-auto">
+              {result.curl_preview}
+            </pre>
+            <button
+              onClick={copyCurl}
+              className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 bg-surface border border-border text-ink-3 hover:text-ink rounded transition-colors"
+            >
+              {copied ? '✓' : 'copy'}
+            </button>
+          </div>
+        )}
       </span>
     );
   }

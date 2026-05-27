@@ -109,11 +109,13 @@ export async function POST(
   let newPrompt = currentPrompt;
   const applied: string[] = [];
   const skipped: string[] = [];
+  const appliedDiffs: { label: string; find: string; replace: string }[] = [];
 
   for (const v of verifications) {
     if (v.exists && newPrompt.includes(v.patch.find)) {
       newPrompt = newPrompt.replace(v.patch.find, v.patch.replace);
       applied.push(v.patch.label);
+      appliedDiffs.push({ label: v.patch.label, find: v.patch.find, replace: v.patch.replace });
     } else {
       skipped.push(v.patch.label);
     }
@@ -218,14 +220,26 @@ export async function POST(
     }
   }).catch(() => {});
 
+  // ── Build curl preview (API key redacted) ────────────────────────────────
+  const curlPreview = [
+    `curl -X PATCH 'https://api.ultravox.ai/api/agents/${agentId}' \\`,
+    `  -H 'X-API-Key: <ULTRAVOX_API_KEY>' \\`,
+    `  -H 'Content-Type: application/json' \\`,
+    `  -d '${JSON.stringify({
+      callTemplate: { ...agent.callTemplate, systemPrompt: newPrompt },
+    })}'`,
+  ].join('\n');
+
   return NextResponse.json({
-    ok:              true,
-    agent:           agentName,
-    error_type:      errorType,
+    ok:               true,
+    agent:            agentName,
+    error_type:       errorType,
     applied,
     skipped,
-    new_hash:        newHash,
-    prompt_length:   newPrompt.length,
+    new_hash:         newHash,
+    prompt_length:    newPrompt.length,
     reanalyze_queued: true,
+    patches:          appliedDiffs,
+    curl_preview:     curlPreview,
   });
 }

@@ -211,13 +211,15 @@ export default async function AgentProfilePage({
     velocityMap.get(type)!.push({ week, count });
   }
 
-  // Prompt version data
-  const promptVersionData: VersionPoint[] = ((pvData as Array<Record<string, unknown>>) ?? []).map((r) => ({
-    prompt_hash: r.prompt_hash as string,
-    first_used:  r.first_used as string,
-    total:       Number(r.total),
-    with_errors: Number(r.with_errors),
-  }));
+  // Prompt version data — filter out null hashes (crash guard for PromptVersionChart)
+  const promptVersionData: VersionPoint[] = ((pvData as Array<Record<string, unknown>>) ?? [])
+    .filter((r) => r.prompt_hash != null && r.first_used != null)
+    .map((r) => ({
+      prompt_hash: r.prompt_hash as string,
+      first_used:  r.first_used as string,
+      total:       Number(r.total),
+      with_errors: Number(r.with_errors),
+    }));
 
   const worstCalls = worstCallsRaw ?? [];
   const fpSet = new Set((fpRows ?? []).map((r) => `${r.call_id}::${r.error_type}`));
@@ -324,9 +326,9 @@ export default async function AgentProfilePage({
                 <span className="text-ink-3 font-normal text-sm ml-3">{callsWithErrors} calls affected</span>
               </h2>
             </div>
-            {isAllowlisted && (
+            {isAllowlisted && fixableErrors.length > 0 && (
               <span className="text-xs px-2.5 py-1 bg-accent-bg text-accent border border-accent-border rounded-md font-medium self-start sm:self-auto">
-                Auto-fix enabled
+                {fixableErrors.length} fix{fixableErrors.length !== 1 ? 'es' : ''} ready
               </span>
             )}
           </div>
