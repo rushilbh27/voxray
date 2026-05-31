@@ -183,7 +183,9 @@ export default async function AgentProfilePage({
     type: string; count: number; critical_count: number; cost_usd: number;
     example_call: string; example_line: string; agents: string[];
   }
-  const topErrors: ErrorFrequency[] = (errorFreqRows ?? []).map((row: Record<string, unknown>) => ({
+  const topErrors: ErrorFrequency[] = (errorFreqRows ?? [])
+    .filter((row: Record<string, unknown>) => row.error_type != null)
+    .map((row: Record<string, unknown>) => ({
     type:           row.error_type as string,
     count:          Number(row.count),
     critical_count: Number(row.critical_count),
