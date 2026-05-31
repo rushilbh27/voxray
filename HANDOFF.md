@@ -303,7 +303,21 @@ All major agents now have verified fix-spec patches. See agent table above.
 
 ---
 
-## NEXT SESSION: session 11
+## ✅ COMPLETED: Session 11 — Bug Fixes + Apply-Fix Curl Preview (commit `b76cd9b`)
+
+**What was fixed:**
+- Cold Outreach agent page crash — `TypeError: Cannot read properties of null (reading 'slice')` in `PromptVersionChart`. Root cause: null `prompt_hash` in `prompt_versions` table for Cold Outreach. Fixed with `?? '??????'` guard in chart + null filter in page before data reaches component.
+- "Auto-fix enabled" badge showed on every agent always (misleading — auto-apply is killed). Now shows `"{N} fixes ready"` only when fixable errors exist.
+
+**What was added:**
+- `apply-fix/route.ts` returns `patches[]` + `curl_preview` (full `curl -X PATCH` to Ultravox with API key redacted) in success response.
+- `ApplyFixButton.tsx` — success state shows `view curl` toggle → expandable pre block with full PATCH curl + copy button.
+
+**Verified agent settings:** fetched live callTemplate for NECTOR Demo, Debt Collector, Sales AI — confirmed `...agent.callTemplate` spread preserves all fields (recording, tools, voice, model, temperature, VAD, inactivity messages). Only `systemPrompt` ever changes.
+
+---
+
+## NEXT SESSION: session 12
 
 **Known issues / low priority:**
 - Shell Gas Uganda calls have no agent_id in DB → analyzed with static inbound rules (not live prompt). Fix: find agent_id from Ultravox and populate.

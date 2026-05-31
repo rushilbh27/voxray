@@ -579,6 +579,19 @@ CRON_SECRET=                # optional — cron route auth
 
 ---
 
+## ✅ COMPLETED: Bug Fixes + Apply-Fix Curl Preview (session 11, commit `b76cd9b`)
+
+**What was built:**
+- `PromptVersionChart.tsx` — null-guard on `prompt_hash` (`?? '??????'` before `.slice`). Fixes `TypeError: Cannot read properties of null (reading 'slice')` crash on Cold Outreach agent page.
+- `[agentId]/page.tsx` — filter null `prompt_hash`/`first_used` rows before passing to `PromptVersionChart`. Double guard.
+- `[agentId]/page.tsx` — "Auto-fix enabled" badge (showed on every agent always, misleading) → `"{N} fixes ready"` badge, only rendered when fixable errors actually exist.
+- `apply-fix/route.ts` — returns `patches[]` (label/find/replace per applied patch) + `curl_preview` (full `curl -X PATCH` command with redacted API key) in success response.
+- `ApplyFixButton.tsx` — success state now shows `view curl` toggle. Expands to show full PATCH curl in scrollable pre block with copy button.
+
+**Verified:** All agents' `callTemplate` fields confirmed via live GET — `recordingEnabled`, `selectedTools`, `voice`, `model`, `temperature`, `vadSettings`, `inactivityMessages` all preserved by `...agent.callTemplate` spread. Only `systemPrompt` changes.
+
+---
+
 ## ✅ COMPLETED: Llama Full Fallback When Haiku Down (session 10, commits `6394341`→`91fff4b`)
 
 **What was built:**
