@@ -5,7 +5,8 @@ import { cookies } from 'next/headers';
 export async function POST() {
   const cookieStore = await cookies();
   const response = NextResponse.redirect(
-    new URL('/login', process.env.VOXRAY_URL ?? 'http://localhost:3000')
+    new URL('/login', process.env.VOXRAY_URL ?? 'http://localhost:3000'),
+    { status: 303 }
   );
 
   const supabase = createServerClient(
