@@ -579,6 +579,18 @@ CRON_SECRET=                # optional — cron route auth
 
 ---
 
+## ✅ COMPLETED: Build Fix + Logout Fix (session 12, commits `fedcc2d` `1a37596`)
+
+**What was fixed:**
+- `tsconfig.json` — added `scripts/` to exclude. `scripts/queue-llama-all.ts` WebSocket type error killed ALL Vercel builds since session 10. Every deploy after `91fff4b` was `ERROR` state. This unblocked 4 pending commits (null prompt_hash fix, badge rename, curl preview, logout fix) all at once.
+- `api/logout/route.ts` — `NextResponse.redirect` 307 → 303. Browser was re-POSTing to `/login` after sign-out, giving "Cannot POST /login". 303 forces GET.
+
+**Researched for next session:**
+- Shell Gas Uganda: 92 calls with `agent_id = null`. Fix is one SQL UPDATE: `SET agent_id = '428d7591-...' WHERE client_name = 'Shell Gas Uganda' AND agent_id IS NULL`.
+- Cost trend chart: `llm_traces` has 9 days of data (2026-05-22 → 2026-05-31), 25,819 traces. Ready to build daily cost bar chart.
+
+---
+
 ## ✅ COMPLETED: Bug Fixes + Apply-Fix Curl Preview (session 11, commit `b76cd9b`)
 
 **What was built:**

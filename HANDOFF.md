@@ -317,16 +317,25 @@ All major agents now have verified fix-spec patches. See agent table above.
 
 ---
 
-## NEXT SESSION: session 12
+## ✅ COMPLETED: Session 12 — Build Fix + Logout Fix (commits `fedcc2d`, `1a37596`)
 
-**Known issues / low priority:**
-- Shell Gas Uganda calls have no agent_id in DB → analyzed with static inbound rules (not live prompt). Fix: find agent_id from Ultravox and populate.
-- Re-analyze Ramco Gas (`/dashboard/5da7bc3e`) to clear old wrong_call_type FPs with new inbound rules.
-- Backlog of `llama_pending` calls from killed script — cron will clear ~100/hour automatically
+**What was fixed:**
+- `tsconfig.json`: added `scripts/` to exclude array. `scripts/queue-llama-all.ts` WebSocket type error was killing ALL Vercel builds since session 10. Every deploy since `b76cd9b` was silently failing — the null prompt_hash fix, badge rename, curl preview, and logout fix were all sitting undeployed. This single tsconfig fix unblocks all of them.
+- `api/logout/route.ts`: `NextResponse.redirect` defaults to 307 (preserves POST method). Browser was POSTing `/api/logout` → 307 → POSTing `/login` → "Cannot POST /login". Fixed to 303 (See Other) → always GETs `/login`.
 
-**Ideas for next work:**
-- Multi-agent diff view (compare two agents side-by-side)
+**Researched but not implemented:**
+- Shell Gas Uganda: 92 calls with `agent_id = null`. These go through NECTOR_DEMO_TEST (`428d7591`) — the prompt has `COMPANY_NAME = Shell Gas Uganda`. Fix: `UPDATE ultravox_calls SET agent_id = '428d7591-3ba5-4b60-8aa5-a92012d12451' WHERE client_name = 'Shell Gas Uganda' AND agent_id IS NULL` — one SQL statement.
+- Cost trend chart: `llm_traces` has data 2026-05-22 → 2026-05-31 (9 days, 25,819 traces). Enough data for a daily cost chart. Build as server component querying `SELECT date_trunc('day', created_at), SUM(cost_usd) FROM llm_traces GROUP BY 1 ORDER BY 1`.
+
+---
+
+## NEXT SESSION: session 13
+
+**Quick wins (each ~15 min):**
+- Shell Gas agent_id: one SQL UPDATE (see above) — then re-analyze those 92 calls
+- Cost trend chart: daily `$` bar chart, add to `/dashboard` below CostBreakdown
+- Re-analyze Ramco Gas (`/dashboard/5da7bc3e`) — clears wrong_call_type FPs
+
+**Bigger ideas:**
 - Email digest (weekly error summary, Supabase edge function)
-- Cost trend chart (daily cost over time — need 7+ days of data)
-- Populate agent_id for Shell Gas Uganda calls
 - Pay Anthropic bill → switch back to Haiku as primary (zero code changes needed)
