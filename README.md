@@ -42,10 +42,12 @@ graph TD
     UPSERT --> HAIKU["Claude Haiku 4.5 — PRIMARY error detection"]
     HAIKU --> TRACE["llm_traces (latency · tokens · cost · prompt_hash)"]
     HAIKU --> ERRORS["call_errors JSONB (errors · confidence · goal_achieved)"]
+    HAIKU -.->|Haiku down| LLAMAFALL["analysis_status = llama_pending"]
     ERRORS --> ALERT["Alert Engine (6 rules + repeat tracker · Telegram)"]
-    UPSERT -->|fire-and-forget| LLAMA["Llama 3.2 audio — ENRICHMENT only"]
-    LLAMA -->|/api/webhook/transcript| ENR[raw_transcript · customer_name]
-    CRON["Vercel Cron (daily)"] --> BATCH["Batch 30 calls/run + sync + alerts"]
+    UPSERT -->|fire-and-forget| LLAMA["Llama 3.2 audio — ENRICHMENT (+ FULL fallback if Haiku down)"]
+    LLAMA -->|/api/webhook/transcript| ENR[raw_transcript · customer_name · errors if fallback]
+    LLAMAFALL --> CRON
+    CRON["Vercel Cron (daily)"] --> BATCH["Batch 30 calls/run + retry llama_pending + sync + alerts"]
     DB[("Supabase — ultravox_calls · llm_traces · prompt_versions · false_positives")] --> DASH["Dashboard (SQL RPCs · <2s load)"]
     DB --> API["REST API v1 + MCP server + CLI"]
 ```
@@ -71,6 +73,8 @@ graph TD
 | **Prompt version chart** | Error rate per SHA-256 prompt hash |
 | **Prompt viewer** | Full system prompt (collapsible) |
 
+`/docs` — full reference page: features, API v1, MCP server, CLI (linked from homepage nav)
+
 `/calls/[id]` — call detail:
 - Chat-bubble transcript (collapsible long messages)
 - Audio player if recording available
@@ -84,7 +88,7 @@ graph TD
 1. **Detect** — Haiku flags error, stores `type + severity + confidence + agent_line`
 2. **Surface** — Agent profile shows error count + exact quote + verified patch
 3. **Verify** — `verifyPatch()` checks find text exists in live prompt → shows line number
-4. **Apply** — `POST /api/agents/[agentId]/apply-fix` → pre-flight verify → PATCH Ultravox
+4. **Apply** — `POST /api/agents/[agentId]/apply-fix` → pre-flight verify → PATCH Ultravox (manual click, every agent; view-curl preview shown before/after apply)
 5. **Prove** — Re-analysis of last 15 calls fires after fix; error rate by prompt version shows drop
 6. **Alert** — Repeat error tracker fires Telegram if same error recurs after fix was applied
 
@@ -92,9 +96,11 @@ graph TD
 
 ## Key Engineering Decisions
 
-### Multi-Model Pipeline: Haiku Primary, Llama Enrichment-Only
+### Multi-Model Pipeline: Haiku Primary, Llama Enrichment + Fallback
 
-Llama 3.2 (self-hosted) consistently missed conditional rule violations that Haiku caught — e.g. `no_save_answers` (only flag if 4+ agent turns AND no Tool message in final 4 messages). Llama runs asynchronously for audio transcription and name extraction only. Haiku is the authoritative error detector.
+Llama 3.2 (self-hosted) consistently missed conditional rule violations that Haiku caught — e.g. `no_save_answers` (only flag if 4+ agent turns AND no Tool message in final 4 messages). Normally Llama runs asynchronously for audio transcription and name extraction only — Haiku is the authoritative error detector.
+
+If Haiku is unavailable (billing, rate limit, network) at analysis time, the call is marked `analysis_status = llama_pending` and Llama becomes the **full** error-detection fallback for that call — it runs full analysis instead of enrichment-only. The daily cron retries all `llama_pending` calls via Llama (never re-attempts Haiku for these).
 
 ### False Positive Rate as Ground Truth
 
@@ -142,11 +148,7 @@ All Telegram alerts include inline button → direct agent profile link.
 
 **NEVER POST/PATCH/DELETE to `api.ultravox.ai`.** Live Uganda clients (~100 calls/day). GET only.
 
-Exception: `POST /api/agents/[agentId]/apply-fix` — hard allowlist in `route.ts`:
-- `428d7591` NECTOR Demo
-- `0a5b5ccc` Davansh Investment
-
-All other agent IDs → 403. No exceptions. Pre-flight `verifyPatch()` runs before any PATCH.
+Exception: `POST /api/agents/[agentId]/apply-fix` — hard allowlist in `route.ts`. All 11 monitored agents are now in the allowlist (expanded from the original 2 — operator-approved 2026-05-24), apply is **manual-only** (operator clicks Confirm, no auto-apply path exists). Agent IDs not in the allowlist → 403. Pre-flight `verifyPatch()` runs before any PATCH; a `curl` preview of the exact request is shown before and after apply.
 
 ---
 
@@ -228,13 +230,15 @@ npm run voxray monitor # CLI: live call monitor
 
 ## Agents Monitored
 
+All 11 agents below are in the apply-fix allowlist (manual apply enabled for every agent).
+
 | Agent | UUID | Fix-specs |
 |-------|------|-----------|
 | Sales_AI | `65ae3d7d` | ✅ 11 patches verified |
 | Debt-Collector-Agent-UG | `52db715f` | ✅ 7 patches verified |
 | Cold_Outreach_AI | `74c435db` | ✅ 8 patches verified |
-| NECTOR_DEMO_TEST | `428d7591` | ✅ 4 patches (apply enabled) |
-| Davansh_Investment_inbound | `0a5b5ccc` | ✅ 2 patches (apply enabled) |
+| NECTOR_DEMO_TEST | `428d7591` | ✅ 4 patches verified |
+| Davansh_Investment_inbound | `0a5b5ccc` | ✅ 2 patches verified |
 | Edifice_Properties_inbound | `bfea3820` | ✅ 2 patches verified |
 | Real_Estate_AI_Sales_Agent | `efecb97c` | ✅ 3 patches verified |
 | Ramco_Gas_inbound | `5da7bc3e` | No active errors |

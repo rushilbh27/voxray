@@ -1219,7 +1219,7 @@ FIELDS:
 - from                   (always {{from}})
 - call_date              (use {{current_date}} → YYYY-MM-DD)
 - call_time              (use {{current_time}} → HH:MM)
-- call_direction         ("inbound" or "outbound")
+- call_direction         ("outbound" — always)
 - client_name
 - is_lead                (boolean)
 - language_used          ("English" or "Swahili")

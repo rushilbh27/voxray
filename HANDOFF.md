@@ -11,6 +11,26 @@ Live: https://voxray.vercel.app
 
 ---
 
+## ✅ COMPLETED: Session 13 — Inbound Agent Overhaul + SchoolPay Agent Creation
+
+**What was built:**
+- Patched all 7 inbound agents (excluding Davansh/Edifice/Ramco) with new `Inbound_Template_v1.txt` system prompt
+- Created `getDateTime` tool v3 (`1aa4feb7`) — `precomputable: false` + `AGENT_REACTION_SPEAKS`: fires on-demand when caller says relative date (tomorrow/next week/etc), agent keeps speaking during tool run
+- Deployed `/get-datetime` endpoint on uncrypt (EAT = UTC+3, Kampala timezone): returns `{current_date, current_day, current_time}`
+- Fixed `firstSpeakerSettings` for all inbound agents → all speak first
+- Fixed Ramco Gas tool nameOverrides (`hangUp_1`/`saveAnswers_1` → `hangUp`/`saveAnswers`)
+- Created SchoolPay agent (`5f13f8df-e778-44be-abb4-49be1d1c862c`) — replaces deleted glotrans. Has 102-question KB, 4 qualification questions (school name/location, ongoing issue, previous contact, ticket urgency), full inbound template
+- Ran `/setup-inbound` on uncrypt for SchoolPay: webhook + SIP routing configured (NectordemoIN pattern)
+- Fixed SchoolPay Q1 overlap (was asking name+contact — already in call flow). Changed to "school name and location" — genuine new info
+- `prompt-backups/Inbound_Template_v1.txt` saved with on-demand getDateTime instructions
+
+**Pending from this session:**
+- Delete dead tool IDs `f54c0efb` (v1) and `f2c78bb2` (v2) — user interrupted before this completed
+- Rename `getDateTime_v3` → `getDateTime` in Ultravox — user interrupted
+- Update all agent prompts to reference `getDateTime` (not `getDateTime_v3`) — user interrupted
+
+---
+
 ## Current State — Everything That Works
 
 ### Core Intelligence
@@ -169,6 +189,29 @@ API v1 / MCP server / CLI
 **NEVER POST/PATCH/DELETE to `api.ultravox.ai`.** Live Uganda customers (~100 calls/day). GET only.
 
 Exception: `POST /api/agents/[agentId]/apply-fix` — **NECTOR Demo only** (`428d7591`). Hard allowlist. All production agents blocked. Pre-flight `verifyPatch()` runs before any PATCH.
+
+### ⚠️ CRITICAL — Manual Patch Rule (Claude Code / scripts)
+
+When patching agent prompts manually (Python scripts, Claude Code sessions), **ALWAYS spread the full `callTemplate`**. Never send only `{"callTemplate": {"systemPrompt": ...}}` — this **wipes voice, model, tools, temperature, VAD, inactivity messages, languageHint, recordingEnabled** from the agent permanently.
+
+**CORRECT pattern (mirrors `apply-fix/route.ts` lines 132-137):**
+```python
+# 1. GET full agent and SAVE it before touching anything
+agent = json.loads(fetch GET /api/agents/{id})
+
+# 2. Build new prompt
+new_prompt = agent["callTemplate"]["systemPrompt"].replace(OLD, NEW)
+
+# 3. PATCH with FULL callTemplate spread — only systemPrompt changes
+patch_body = {
+  "callTemplate": {
+    **agent["callTemplate"],  # spread ALL existing fields first
+    "systemPrompt": new_prompt  # only override this
+  }
+}
+```
+
+This is enforced in the Voxray app. Enforce it in every manual patch too. See also: `ultravox_management_guide.md`.
 
 ---
 
@@ -329,12 +372,17 @@ All major agents now have verified fix-spec patches. See agent table above.
 
 ---
 
-## NEXT SESSION: session 13
+## NEXT SESSION: session 14
 
-**Quick wins (each ~15 min):**
-- Shell Gas agent_id: one SQL UPDATE (see above) — then re-analyze those 92 calls
+**First — finish interrupted work from session 13:**
+1. Delete dead getDateTime tools: `f54c0efb` (v1) and `f2c78bb2` (v2) via `DELETE /api/tools/{tool_id}`
+2. Rename `getDateTime_v3` tool (`1aa4feb7`) → `getDateTime` via `PUT /api/tools/1aa4feb7-5e11-42ab-add0-957680e0973d` (full definition, just change `name` and `modelToolName`)
+3. Update all 10 inbound agent prompts: replace any reference to `getDateTime_v3` with `getDateTime`
+
+**Then — Voxray dashboard work:**
+- Shell Gas agent_id: `UPDATE ultravox_calls SET agent_id = '428d7591-3ba5-4b60-8aa5-a92012d12451' WHERE client_name = 'Shell Gas Uganda' AND agent_id IS NULL` — then re-analyze those 92 calls
 - Cost trend chart: daily `$` bar chart, add to `/dashboard` below CostBreakdown
-- Re-analyze Ramco Gas (`/dashboard/5da7bc3e`) — clears wrong_call_type FPs
+- Add SchoolPay agent (`5f13f8df`) to Voxray agent grid + fix-specs
 
 **Bigger ideas:**
 - Email digest (weekly error summary, Supabase edge function)

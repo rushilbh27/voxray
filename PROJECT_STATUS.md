@@ -1,6 +1,6 @@
 # Voxray — Project Status Report
 
-> Last updated: 2026-05-27 (session 10 — Llama fallback when Haiku down, auto-routing, cron scale-up)  
+> Last updated: 2026-06-30 (session 13 — inbound agent overhaul + SchoolPay creation + getDateTime on-demand tool)  
 > Update this file every session. Not a handoff bridge — a permanent record of what was built, where we stand, and where we're going.
 
 ---
@@ -541,12 +541,28 @@ Each error type has patches (find→replace strings). On the agent profile page,
 - Env vars set in Vercel: `VOXRAY_API_KEY`, `CRON_SECRET`, `ULTRAVOX_WEBHOOK_SECRET`
 - **Site is live and launched: https://voxray.vercel.app** 🚀
 
+### ✅ Done: Session 13 — Inbound Agent Overhaul + SchoolPay Creation (2026-06-30)
+
+**Ultravox agent work (outside Voxray dashboard — prompt/tool changes on uncrypt/Ultravox directly):**
+- All 7 inbound agents patched with `Inbound_Template_v1.txt` — standardized system prompt, unified call flow, saveAnswers schema
+- `getDateTime` tool v3 (`1aa4feb7`): `precomputable: false` + `AGENT_REACTION_SPEAKS` — fires only when caller mentions relative date, agent keeps speaking during run. All 10 inbound agents use this tool.
+- `/get-datetime` deployed on uncrypt — EAT (UTC+3) time/date/day
+- `firstSpeakerSettings` fixed for all inbound agents → agent speaks first, generates greeting from systemPrompt
+- Ramco Gas tool nameOverrides fixed (`hangUp_1`/`saveAnswers_1` → `hangUp`/`saveAnswers`)
+- SchoolPay agent created (`5f13f8df-e778-44be-abb4-49be1d1c862c`) — replaces deleted glotrans. 102 KB questions, 4 qualification Qs, full inbound template, webhook + SIP via `/setup-inbound`
+
+**Interrupted (session 14 must finish first):**
+- Dead tool IDs `f54c0efb` (v1) and `f2c78bb2` (v2) NOT yet deleted
+- `getDateTime_v3` NOT yet renamed to `getDateTime`
+- Agent prompts NOT yet updated to reference `getDateTime` (currently say `getDateTime_v3`)
+
 ### Remaining (not blockers)
-- [ ] **Re-analyze Shell Gas Uganda** — hit Reanalyze on `/dashboard/5da7bc3e` to clear existing wrong_call_type FPs with new inbound rules
-- [ ] **Populate agent_id for Shell Gas Uganda** — calls have agent_id=null, preventing live prompt fetch
+- [ ] **Finish session 13 cleanup** — delete v1/v2 tools, rename v3, update agent prompts (see HANDOFF.md session 14 block)
+- [ ] **Add SchoolPay to Voxray grid** — agent `5f13f8df`, needs AgentType + fix-specs
+- [ ] **Shell Gas agent_id** — `UPDATE ultravox_calls SET agent_id = '428d7591-...' WHERE client_name = 'Shell Gas Uganda' AND agent_id IS NULL`
 - [ ] **Multi-agent diff view** — compare two agents side-by-side
 - [ ] **Email digest** — weekly error summary, Supabase edge function
-- [ ] **Cost trend chart** — daily cost over time (currently only summary tiles; 3+ days data needed)
+- [ ] **Cost trend chart** — daily cost over time (currently only summary tiles)
 
 ---
 
