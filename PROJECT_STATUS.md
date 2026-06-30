@@ -1,6 +1,6 @@
 # Voxray — Project Status Report
 
-> Last updated: 2026-06-30 (session 14 — uncrypt agent info API + SchoolPay qual fix + late call ending diagnosis)  
+> Last updated: 2026-06-30 (session 15 — inbound template fixes + live agent patches + agent audit)  
 > Update this file every session. Not a handoff bridge — a permanent record of what was built, where we stand, and where we're going.
 
 ---
@@ -576,8 +576,34 @@ Each error type has patches (find→replace strings). On the agent profile page,
 - Root cause: saveAnswers is a BLOCKING HTTP tool. Prompt says "WAIT for saveAnswers to return" — double block (tool reaction + prompt instruction). Then agent speaks closing. Then hangUp = second blocking HTTP round-trip. Two sequential webhook RTTs = 8–12s dead air.
 - Fix options: (1) `staticResponse` on saveAnswers — returns immediately, fires webhook in background. No wait. (2) `AGENT_REACTION_SPEAKS` — agent speaks closing WHILE saveAnswers runs in parallel. (3) Restructure: say closing FIRST, then save, then hangUp. Option 1 or 3 cleanest.
 
+### ✅ Done: Session 15 — Inbound Template Fixes + Live Agent Patches + Agent Audit (2026-06-30)
+
+**Inbound_Template_v1.txt — 4 fixes applied:**
+- Fix 1: STEP 1 changed from "say scripted greeting" to "greeting already spoken via firstSpeakerSettings, ask for name"
+- Fix 2: Removed STEP 7 pre-close acknowledgment ("Perfect... I have everything I need...") — was causing two-TTS-turn delay at call end. Steps 8→7, 9→8, 10→9 renumbered.
+- Fix 3: Added QUALIFICATION_QUESTIONS guard — if `{{QUALIFICATION_QUESTIONS}}` is empty, skip STEP 4 and 5 entirely
+- Fix 4: Added inactivity early exit rule — call saveAnswers with `call_status = "no_response"` before hangUp
+
+**Finalized inbound agent creation curl** — documented with correct VAD settings (stolen from Sales_AI: `turnEndpointDelay: 0.400s`, `minimumInterruptionDuration: 0.800s`), all 3 tools, hardcoded firstSpeakerSettings greeting.
+
+**Live patches applied to 4 production agents:**
+| Agent | Patches |
+|-------|---------|
+| GlowTrans (`5f13f8df`) | A (getDateTime fix — removed contradictory "call before saving" rule) + B (remove STEP 7 acknowledgment) + C (inactivity save rule) |
+| Sales_AI (`65ae3d7d`) | B (remove STEP 1 acknowledgment) + C (inactivity save rule) |
+| Cold_Outreach_AI (`74c435db`) | B (remove STEP 1 acknowledgment) + C (inactivity save rule) |
+| Debt-Collector-Agent-UG (`52db715f`) | C (inactivity save using saveDebt) |
+
+**Agent voice + tools audit (all 21 agents checked):**
+- All production inbound agents: ✅ voice + getDateTime/hangUp/saveAnswers attached
+- Issues found:
+  - `Cold_Outreach_AI` — missing `getDateTime` tool
+  - `Sales_AI` — missing `getDateTime` tool
+  - `Debt_Collection_Welcome-Bot` (`2dfe90c6`) — NO voice ID set
+
 ### Remaining (not blockers)
-- [ ] **Fix late call ending** — add `staticResponse` to saveAnswers tool OR restructure prompt to say closing first then save
+- [ ] **Add getDateTime to Cold_Outreach_AI + Sales_AI** — both missing the tool (low priority — outbound agents, date resolution less critical)
+- [ ] **Fix Debt_Collection_Welcome-Bot voice** — no voice set, will use default
 - [ ] **Finish session 13 cleanup** — delete v1/v2 tools (`f54c0efb`, `f2c78bb2`), rename v3 (`1aa4feb7`) → `getDateTime`, update agent prompts
 - [ ] **Add SchoolPay to Voxray grid** — agent `5f13f8df`, needs AgentType + fix-specs
 - [ ] **Shell Gas agent_id** — `UPDATE ultravox_calls SET agent_id = '428d7591-...' WHERE client_name = 'Shell Gas Uganda' AND agent_id IS NULL`

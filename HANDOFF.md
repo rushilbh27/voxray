@@ -372,6 +372,28 @@ All major agents now have verified fix-spec patches. See agent table above.
 
 ---
 
+## ✅ COMPLETED: Session 15 — Inbound Template Fixes + Live Agent Patches + Agent Audit
+
+**What was built:**
+
+**Inbound_Template_v1.txt — 4 fixes:**
+- STEP 1: removed scripted greeting, now starts with "greeting already spoken, ask for name"
+- STEP 7 removed: pre-close acknowledgment ("Perfect... I have everything I need") caused two-TTS-turn pattern → +4s dead air at call end. Steps renumbered.
+- QUALIFICATION_QUESTIONS guard: if template variable empty → skip STEP 4 and 5 entirely
+- Inactivity early exit: call saveAnswers(`call_status: "no_response"`, `is_lead: false`, `interest: "cold"`, `lead_score: 1`) + hangUp
+
+**Inbound agent creation curl finalized:** correct VAD (Sales_AI settings), all 3 tools (getDateTime/hangUp/saveAnswers), hardcoded firstSpeakerSettings greeting, inactivityMessages with 10s/20s messages.
+
+**Live patches to 4 agents:**
+- GlowTrans: removed contradictory getDateTime "call before saving" rule + removed STEP 7 ack + added inactivity save
+- Sales_AI: removed STEP 1 ack + added inactivity save
+- Cold_Outreach_AI: removed STEP 1 ack + added inactivity save
+- Debt-Collector-Agent-UG: added inactivity save (saveDebt with no_response)
+
+**Agent audit (all 21 agents):** found 3 issues — Cold_Outreach_AI and Sales_AI missing getDateTime; Debt_Collection_Welcome-Bot missing voice entirely.
+
+---
+
 ## ✅ COMPLETED: Session 14 — Uncrypt Agent Info API + SchoolPay Qual Fix + Late Call Ending Diagnosis
 
 **What was built:**
@@ -394,11 +416,13 @@ All major agents now have verified fix-spec patches. See agent table above.
 
 ---
 
-## NEXT SESSION: Session 15
+## NEXT SESSION: Session 16
 
-**Priority 1 — Fix late call ending (affects all inbound agents):**
-- Add `staticResponse` to the saveAnswers tool definition on Ultravox. This makes Ultravox return immediately to the agent without waiting for the webhook, while still POSTing to the webhook in background. Zero prompt changes.
-- OR restructure inbound template STEP 8/9: agent says closing line FIRST, THEN calls saveAnswers silently (with staticResponse), THEN hangUp. Either way call ends in <2s after user says goodbye.
+**Priority 1 — Fix missing tools on outbound agents:**
+- `Cold_Outreach_AI` (`74c435db`): add `getDateTime` tool (`1aa4feb7`) to selectedTools
+- `Sales_AI` (`65ae3d7d`): add `getDateTime` tool (`1aa4feb7`) to selectedTools
+- `Debt_Collection_Welcome-Bot` (`2dfe90c6`): set voice to `73388de4` (standard voice)
+- Do via PATCH with full callTemplate spread
 
 **Priority 2 — Finish session 13 cleanup (on Ultravox directly):**
 1. Delete dead getDateTime tools: `f54c0efb` (v1) and `f2c78bb2` (v2) via `DELETE /api/tools/{tool_id}`
