@@ -372,17 +372,43 @@ All major agents now have verified fix-spec patches. See agent table above.
 
 ---
 
-## NEXT SESSION: session 14
+## ✅ COMPLETED: Session 14 — Uncrypt Agent Info API + SchoolPay Qual Fix + Late Call Ending Diagnosis
 
-**First — finish interrupted work from session 13:**
+**What was built:**
+
+**Uncrypt agent info API (3 new endpoints):**
+- `GET /agents/inbound` — lists all 8 active inbound agents (name + UUID). Auth: `X-Agent-Key` header.
+- `GET /agents/{id}/info` — returns parsed DATA ENTRY block as structured JSON (company_name, agent_name, company_info, knowledge_base array, qualification_questions array, closing_qualification_question, customer_intent_values). Parser handles both bracket and bare format.
+- `PATCH /agents/{id}/info` — partial update: send only fields to change, rest preserved. Rebuilds DATA ENTRY block, PATCHes Ultravox with full callTemplate spread. Returns `updated_fields`.
+- `INBOUND_AGENTS` dict: 8 correct new-format agents added. Auth: hex key `712c73bd...` env var on uncrypt Vercel.
+- Part 3 HTML API doc: `~/Downloads/inbound_agent_api_doc_part3.html` — same style as Part 1/2. Shows auth, all 3 endpoints, curl examples, response schemas, error table.
+
+**SchoolPay agent fixed (`5f13f8df`):**
+- STEP 4 now MANDATORY — no longer waits for agreement, proceeds directly to questions
+- 3 qualification questions updated (school name+location, ongoing issue type, immediate assistance)
+- Closing question: support ticket created, best date/time for physical visit
+
+**Late call ending — diagnosed (no code changed):**
+- Root cause confirmed: two sequential blocking HTTP round-trips (saveAnswers → webhook response → agent speaks closing → hangUp → call ends). Prompt instruction "WAIT for saveAnswers to return" adds explicit blocking on top of tool's default LISTENS reaction.
+- Fix options identified: `staticResponse` on saveAnswers (instant return, background webhook) OR restructure prompt (say closing FIRST, then save silently, then hangUp). Option 1 is cleanest — zero prompt change needed.
+
+---
+
+## NEXT SESSION: Session 15
+
+**Priority 1 — Fix late call ending (affects all inbound agents):**
+- Add `staticResponse` to the saveAnswers tool definition on Ultravox. This makes Ultravox return immediately to the agent without waiting for the webhook, while still POSTing to the webhook in background. Zero prompt changes.
+- OR restructure inbound template STEP 8/9: agent says closing line FIRST, THEN calls saveAnswers silently (with staticResponse), THEN hangUp. Either way call ends in <2s after user says goodbye.
+
+**Priority 2 — Finish session 13 cleanup (on Ultravox directly):**
 1. Delete dead getDateTime tools: `f54c0efb` (v1) and `f2c78bb2` (v2) via `DELETE /api/tools/{tool_id}`
-2. Rename `getDateTime_v3` tool (`1aa4feb7`) → `getDateTime` via `PUT /api/tools/1aa4feb7-5e11-42ab-add0-957680e0973d` (full definition, just change `name` and `modelToolName`)
-3. Update all 10 inbound agent prompts: replace any reference to `getDateTime_v3` with `getDateTime`
+2. Rename `getDateTime_v3` tool (`1aa4feb7`) → `getDateTime` via `PUT /api/tools/1aa4feb7-5e11-42ab-add0-957680e0973d`
+3. Update all 10 inbound agent prompts: replace `getDateTime_v3` references with `getDateTime`
 
-**Then — Voxray dashboard work:**
-- Shell Gas agent_id: `UPDATE ultravox_calls SET agent_id = '428d7591-3ba5-4b60-8aa5-a92012d12451' WHERE client_name = 'Shell Gas Uganda' AND agent_id IS NULL` — then re-analyze those 92 calls
-- Cost trend chart: daily `$` bar chart, add to `/dashboard` below CostBreakdown
-- Add SchoolPay agent (`5f13f8df`) to Voxray agent grid + fix-specs
+**Priority 3 — Voxray dashboard:**
+- Shell Gas agent_id: `UPDATE ultravox_calls SET agent_id = '428d7591-3ba5-4b60-8aa5-a92012d12451' WHERE client_name = 'Shell Gas Uganda' AND agent_id IS NULL`
+- Cost trend chart: daily `$` bar chart below CostBreakdown
+- Add SchoolPay (`5f13f8df`) to Voxray agent grid + fix-specs
 
 **Bigger ideas:**
 - Email digest (weekly error summary, Supabase edge function)

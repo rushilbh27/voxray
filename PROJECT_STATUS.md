@@ -1,6 +1,6 @@
 # Voxray — Project Status Report
 
-> Last updated: 2026-06-30 (session 13 — inbound agent overhaul + SchoolPay creation + getDateTime on-demand tool)  
+> Last updated: 2026-06-30 (session 14 — uncrypt agent info API + SchoolPay qual fix + late call ending diagnosis)  
 > Update this file every session. Not a handoff bridge — a permanent record of what was built, where we stand, and where we're going.
 
 ---
@@ -556,8 +556,29 @@ Each error type has patches (find→replace strings). On the agent profile page,
 - `getDateTime_v3` NOT yet renamed to `getDateTime`
 - Agent prompts NOT yet updated to reference `getDateTime` (currently say `getDateTime_v3`)
 
+### ✅ Done: Session 14 — Uncrypt Agent Info API + SchoolPay Qual Fix + Diagnosis (2026-06-30)
+
+**Uncrypt API (in uncrypt repo, not voxray):**
+- `GET /agents/inbound` — lists all 8 active inbound agents with name + UUID
+- `GET /agents/{id}/info` — parses DATA ENTRY block from agent's system prompt, returns structured JSON (company_name, agent_name, company_info, knowledge_base, qualification_questions, closing_qualification_question, customer_intent_values)
+- `PATCH /agents/{id}/info` — merges partial update, rebuilds DATA ENTRY block, PATCHes Ultravox with full callTemplate spread. Returns updated_fields list.
+- All 3 endpoints require `X-Agent-Key: 712c73bd...` header → 401 if missing/wrong
+- Parser handles both bracket format (`KEY = [\n...\n]`) and bare format (no brackets) — needed for nectortechnology_inbound
+- `INBOUND_AGENTS` allowlist: 8 correct new-format agents (`companyname_inbound` naming)
+- Part 3 HTML API doc created (same style as Part 1/2), saved to `~/Downloads/inbound_agent_api_doc_part3.html`
+
+**SchoolPay agent `5f13f8df` patched on Ultravox:**
+- STEP 4 changed from soft ask to MANDATORY — "Before I let you go... may I ask you a few quick questions?" — agent proceeds without waiting for agreement
+- Qualification questions updated (3 new): school name + location, ongoing issue type, immediate assistance needed
+- Closing: "I have created your support ticket. What is the best date and time our team can reach you for a physical visit if needed?"
+
+**Late call ending — diagnosed (no fix applied yet):**
+- Root cause: saveAnswers is a BLOCKING HTTP tool. Prompt says "WAIT for saveAnswers to return" — double block (tool reaction + prompt instruction). Then agent speaks closing. Then hangUp = second blocking HTTP round-trip. Two sequential webhook RTTs = 8–12s dead air.
+- Fix options: (1) `staticResponse` on saveAnswers — returns immediately, fires webhook in background. No wait. (2) `AGENT_REACTION_SPEAKS` — agent speaks closing WHILE saveAnswers runs in parallel. (3) Restructure: say closing FIRST, then save, then hangUp. Option 1 or 3 cleanest.
+
 ### Remaining (not blockers)
-- [ ] **Finish session 13 cleanup** — delete v1/v2 tools, rename v3, update agent prompts (see HANDOFF.md session 14 block)
+- [ ] **Fix late call ending** — add `staticResponse` to saveAnswers tool OR restructure prompt to say closing first then save
+- [ ] **Finish session 13 cleanup** — delete v1/v2 tools (`f54c0efb`, `f2c78bb2`), rename v3 (`1aa4feb7`) → `getDateTime`, update agent prompts
 - [ ] **Add SchoolPay to Voxray grid** — agent `5f13f8df`, needs AgentType + fix-specs
 - [ ] **Shell Gas agent_id** — `UPDATE ultravox_calls SET agent_id = '428d7591-...' WHERE client_name = 'Shell Gas Uganda' AND agent_id IS NULL`
 - [ ] **Multi-agent diff view** — compare two agents side-by-side
